@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		xmlns:EncComponents="EncComponents.*"
+		alpha="0.75"
+		rollOutEffect="{fade10}"
+		rollOverEffect="{fade01}">
+	<!-- host component -->
+	<fx:Metadata>
+		[HostComponent("com.esri.ags.components.Navigation")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.layers.supportClasses.LOD;
+			
+			private function getScale(value:Number):String
+			{
+				const lod:LOD = hostComponent.map.lods[value];
+				if (lod)
+				{
+					const scale:Number = lod.scale;
+					return "1:" + numFormate.format(scale).toString();
+
+				}
+				return "Error";
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:Fade id="fade01"
+				alphaFrom="0.75"
+				alphaTo="1.0"
+				duration="500"/>
+		<s:Fade id="fade10"
+				alphaFrom="1.0"
+				alphaTo="0.75"
+				duration="500"/>
+		<mx:NumberFormatter id="numFormate" useThousandsSeparator="false" precision="0" />
+
+	</fx:Declarations>
+	
+	<!-- states -->
+	<s:states>
+		<s:State name="disabledWithSlider" />
+		<s:State name="normalWithSlider" />
+		<s:State name="disabled" />
+		<s:State name="normal" />
+	</s:states>
+	
+	<s:Rect left="0" right="0" top="0" bottom="0"
+			radiusX="10"
+			radiusY="10"  >
+		<s:stroke>
+			<s:SolidColorStroke color="0x000000" weight="1.0"/>
+		</s:stroke>
+		<s:fill>
+			<s:SolidColor alpha="0.75" color="#BAC19F"/>
+		</s:fill>
+	</s:Rect>
+
+	<s:VGroup gap="3"
+			  horizontalAlign="center"
+			  minHeight="52"
+			  paddingBottom="4"
+			  paddingLeft="2"
+			  paddingRight="3"
+			  paddingTop="3">
+		
+		<s:Button id="zoomInButton"
+				  enabled.disabled="false"
+				  enabled.disabledWithSlider="false"
+				  skinClass="com.esri.ags.skins.NavigationZoomInButtonSkin"
+				  toolTip="{resourceManager.getString('ESRIMessages', 'zoomInTooltip')}"/>
+
+		<s:VSlider id="slider"
+							  height="160"
+							  enabled.disabled="false"
+							  enabled.disabledWithSlider="false"
+							  enabled.normalWithSlider="true"
+							  includeIn="normalWithSlider,disabledWithSlider"
+							  liveDragging="false"
+							  maximum="{hostComponent.map.lods.length - 1}"
+							  showDataTip="true"
+							  snapInterval="1"
+							  dataTipFormatFunction="getScale"
+							  value="{hostComponent.map.level}"
+							  skinClass="com.esri.ags.skins.NavigationVSliderSkin"/>
+		
+		<s:Button id="zoomOutButton"
+				  enabled.disabled="false"
+				  enabled.disabledWithSlider="false"
+				  skinClass="com.esri.ags.skins.NavigationZoomOutButtonSkin"
+				  toolTip="{resourceManager.getString('ESRIMessages', 'zoomOutTooltip')}"/>
+		
+
+		
+	</s:VGroup>
+
+	<!-- SkinParts
+	name=slider, type=mx.controls.sliderClasses.Slider, required=false
+	name=zoomInButton, type=spark.components.supportClasses.ButtonBase, required=false
+	name=zoomOutButton, type=spark.components.supportClasses.ButtonBase, required=false
+	-->
+</s:Skin>

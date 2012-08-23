@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+				xmlns:flexiframe="http://code.google.com/p/flex-iframe/"
+				creationComplete="init()"
+				showCloseButton="true" 
+				verticalScrollPolicy="off" 
+				horizontalScrollPolicy="off" 
+				width="750" height="550"
+				close="removeMe();" borderAlpha="1">
+	<mx:Script>
+		<![CDATA[
+			import com.google.code.flexiframe.IFrame;
+			import mx.managers.PopUpManager;
+			
+			[bindable]
+			private var myiFrame:IFrame  = new IFrame("iFrame"); 
+			[bindable]
+			public var myurl:String;
+			
+			//this function called when the widget's configuration is loaded
+			private function init():void
+			{				
+				myurl = this.title.toString();
+				this.title = "Street View Viewer";
+				myIFrame.source = myurl;
+			}
+			
+			// Cancel button click event listener.
+			private function removeMe():void {
+				PopUpManager.removePopUp(this);
+				myIFrame.removeIFrame();
+			}			
+		]]>
+	</mx:Script>
+	
+	<mx:HBox>		
+		<mx:Panel width="740" height="520" title="" paddingTop="1" paddingBottom="1" paddingLeft="1" paddingRight="1" >
+			<flexiframe:IFrame id="myIFrame" width="98%" height="98%"  />
+		</mx:Panel>
+	</mx:HBox>
+	
+</mx:TitleWindow> 

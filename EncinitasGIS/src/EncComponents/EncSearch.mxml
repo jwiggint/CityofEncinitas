@@ -1,0 +1,663 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EncComponents:SuperPanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" 
+						  xmlns:esri="http://www.esri.com/2008/ags"
+						  xmlns:EncComponents="EncComponents.*" 
+						  layout="vertical" width="476" height="300"
+						  minWidth="200" minHeight="100"
+						  horizontalAlign="left"
+						  verticalAlign="top"
+						  moveEffect="Move"
+						  creationComplete="init()"
+						  close="superpanel1_closeHandler(event)" xmlns:symbols="com.esri.ags.symbols.*"  textAlign="left">
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.FeatureSet;
+			import com.esri.ags.Graphic;
+			import com.esri.ags.SpatialReference;
+			import com.esri.ags.clusterers.ESRIClusterer;
+			import com.esri.ags.geometry.Extent;
+			import com.esri.ags.layers.ArcGISDynamicMapServiceLayer;
+			import com.esri.ags.layers.FeatureLayer;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.layers.Layer;
+			import com.esri.ags.layers.supportClasses.LayerDetails;
+			import com.esri.ags.layers.supportClasses.LayerInfo;
+			import com.esri.ags.symbols.FillSymbol;
+			import com.esri.ags.symbols.Symbol;
+
+			
+			import flash.filters.BitmapFilterQuality;
+			import flash.filters.BitmapFilterType;
+			
+			import mx.binding.utils.*;
+			import mx.collections.ArrayCollection;
+			import mx.collections.IViewCursor;
+			import mx.collections.Sort;
+			import mx.collections.SortField;
+			import mx.containers.Canvas;
+			import mx.controls.Alert;
+			import mx.core.Container;
+			import mx.events.CloseEvent;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.events.FaultEvent;
+			
+			import spark.events.IndexChangeEvent;
+
+			[Bindable]
+			private var resultsCollection:Array = new Array();
+			[Bindable]
+			private var arMapNames:ArrayCollection;
+			
+			[Bindable]
+			private var arBlockNames:ArrayCollection;
+			[Bindable]
+			private var arLotNames:ArrayCollection;
+			[Bindable]
+			private var _PlansTableID:String;
+			[Bindable]
+			private var _LotParcelID:String;
+			[Bindable]
+			private var _SubdivBlockID:String;
+			[Bindable]
+			private var _SubdivisionID:String;
+			[Bindable]
+			private var _APNBookID:String;
+			[Bindable]
+			private var _APNPageID:String;
+			[Bindable]
+			private var _PlanHasParcelRelationshipID:Number;
+			private var arBlockGraphics:ArrayCollection;
+			private var arLotGraphics:ArrayCollection;
+			private var graphicsLayer:GraphicsLayer;
+			private var arPlanResults:Array = new Array();
+			
+			private function init():void
+			{
+				graphicsLayer = new GraphicsLayer();
+				graphicsLayer.name = "Draw Features";
+				graphicsLayer.symbol= fillSymbol;
+
+				map.addLayer(graphicsLayer, -1);
+
+				
+			}
+			
+			public function set PlansTableID(value:String):void
+			{
+				_PlansTableID = value;
+			}
+			public function set LotParcelID(value:String):void
+			{
+				_LotParcelID = value;
+			}
+			public function set SubdivBlockID(value:String):void
+			{
+				_SubdivBlockID = value;
+			}
+			public function set SubdivisionID(value:String):void
+			{
+				_SubdivisionID = value;
+			}
+			public function set APNBookID(value:String):void
+			{
+				_APNBookID = value;
+			}
+			public function set APNPageID(value:String):void
+			{
+				_APNPageID = value;
+			}
+			public function set PlanHasParcelRelationshipID(value:Number):void
+			{
+				_PlanHasParcelRelationshipID = value;
+			}
+
+
+			private function onResult(featureSet:FeatureSet, token:Object = null):void
+			{
+				var resultIDs:Array = [];
+
+				if (featureSet.features.length >0)
+				{
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						resultIDs.push(graphic.attributes.OBJECTID);
+						arPlanResults.push({OBJECTID: graphic.attributes.OBJECTID, Name: graphic.attributes.Name, DocNo: graphic.attributes.DocNumber})
+					}
+					relatedPlanParcels.objectIds = resultIDs;
+					QueryEncPlanTableTask.executeRelationshipQuery(relatedPlanParcels,new AsyncResponder(onResult2, onFault2));
+				}
+				
+			}
+			
+			private function onAPNIndexQuery(featureSet:FeatureSet, token:Object = null):void
+			{
+				var queryMapBook:Query = new Query;
+				var querytaskMapBook:QueryTask = new QueryTask;
+				querytaskMapBook.showBusyCursor =true;
+				querytaskMapBook.useAMF = true;
+				queryMapBook.returnGeometry = true;
+				queryMapBook.outFields = [];
+
+				var newExtent:Extent;
+				if (featureSet.features.length >0)
+				{
+					
+					
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						if (newExtent == null)
+						{
+							newExtent = graphic.geometry.extent;
+						}
+						else
+						{
+							newExtent.union(graphic.geometry.extent);
+
+						}
+						graphic.symbol = fillSymbol;
+						graphic.visible = true;
+						graphicsLayer.add(graphic);
+						map.extent = newExtent;
+					}
+				}
+				queryMapBook.geometry = newExtent;
+				queryMapBook.where = "PAGE = " + txtAPNPage.text;
+				querytaskMapBook.url = "http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/" + _APNPageID;
+				querytaskMapBook.execute(queryMapBook,new AsyncResponder(onAssessorPageQuery, onAssessorPageQueryFault));
+			}
+			private function onAssessorPageQuery(featureSet:FeatureSet, token:Object = null):void
+			{
+				
+				if (featureSet.features.length >0)
+				{
+					var newExtent:Extent;					
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						graphic.symbol = fillSymbol;
+						graphic.visible = true;
+						graphicsLayer.add(graphic);
+					}
+				}
+			}	
+			private function onNewSearch(event:Event):void
+			{
+				parentApplication.LandRecordsMap.clearSelected();
+				resultsCollection = [];
+				arPlanResults = [];
+				graphicsLayer.clear();
+				switch (bbSearch.selectedItem.id)
+				{
+					case "DocNo":
+					{
+						QueryEncPlanTable.where = "DocNumber = '" + txtDocNumber.text + "'";
+						//QueryEncPlanTableTask.execute(QueryEncPlanTable, new AsyncResponder(onResult, onFault));
+						QueryEncPlanTableTask.execute(QueryEncPlanTable, new AsyncResponder(onResult , onFault));
+						break;
+					}
+					case "RecYearNo":
+					{
+						//doSearchFabricPlan(txtRecordYear.text,txtRecordNumber.text);
+						QueryEncPlanTable.where = "RecordingYear = '" + txtRecordYear.text + "' and RecordingSequence = '" + txtRecordNumber.text + "'";
+						QueryEncPlanTableTask.execute(QueryEncPlanTable, new AsyncResponder(onResult, onFault));
+						break;
+					}
+					case "bookpage":
+					{
+						var queryMapBook:Query = new Query;
+						var querytaskMapBook:QueryTask = new QueryTask;
+						querytaskMapBook.showBusyCursor =true;
+						querytaskMapBook.useAMF = true;
+						queryMapBook.returnGeometry = true;
+						queryMapBook.outFields = [];
+						queryMapBook.where = "BOOK = " + txtAPNBook.text;
+						querytaskMapBook.url = "http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/" + _APNBookID;
+						querytaskMapBook.execute(queryMapBook,new AsyncResponder(onAPNIndexQuery, onAPNIndexQueryFault));
+						break;
+					}
+					case "MapBlockLot":
+					{
+						//If a leo/parcel value entered zoon to it
+						//If not check to see if a block is entered and zoom to it
+						//If not check to see if a map is entered. If so query the map service anc zoom to it
+						if (! cboLot.textInput.text == "")
+						{
+							for each ( var grLot:Graphic in arLotGraphics)
+							{
+								if (grLot.attributes.Name == cboLot.textInput.text)
+								{
+									//map.centerAt(grLot.geometry.extent.center);
+									grLot.symbol = fillSymbol;
+									grLot.visible = true;
+									graphicsLayer.add(grLot);
+									//map.scale = 9;
+									map.extent = grLot.geometry.extent;
+									map.panLeft();
+									map.zoom(1.50);
+								}
+							}
+						}
+						else if (! cboBlock.textInput.text == "")
+						{
+							for each ( var grBlock:Graphic in arBlockGraphics)
+							{
+								if (grBlock.attributes.Name == cboBlock.textInput.text)
+								{
+									//map.centerAt(grBlock.geometry.extent.center);
+									grBlock.symbol = fillSymbol;
+									grBlock.visible = true;
+									graphicsLayer.add(grBlock);
+									map.extent = grBlock.geometry.extent;
+									map.panLeft();
+									map.zoom(1.50);
+									
+								}
+							}
+						}
+						else if (! cboMap.textInput.text == "")
+						{
+							var mapquery:Query = new Query;
+							mapquery.returnGeometry = true;
+							mapquery.where = "Name = '" + cboMap.textInput.text + "'";
+							mapquery.outFields = [];
+							var mapquewrytask:QueryTask = new QueryTask;
+							mapquewrytask.url = "http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/" + _SubdivisionID;
+							mapquewrytask.execute(mapquery,new AsyncResponder(onQueryMapNames2,onQueryMapNamesFault2));
+						}
+
+						break;
+						//var grLot:Graphic = arLotGraphics.getItemAt(cboLot.selectedIndex) as Graphic;
+
+					}
+				}
+			}
+			private function onResult2(results:Object, token:Object = null):void
+			{
+				
+				var newExtent:Extent;
+				
+				for each( var RelatedResultFS:FeatureSet in results)
+				{
+					
+					resultsCollection = RelatedResultFS.features;
+					for each( var RelateResultGraphic:Graphic in RelatedResultFS.features)
+					{
+						if (newExtent == null)
+						{
+							newExtent = RelateResultGraphic.geometry.extent;
+							RelateResultGraphic.symbol = fillSymbol;
+							RelateResultGraphic.visible = true;
+							graphicsLayer.add(RelateResultGraphic);
+						}
+						else
+						{
+							newExtent.union(RelateResultGraphic.geometry.extent);
+							RelateResultGraphic.symbol = fillSymbol;
+							RelateResultGraphic.visible = true;
+							graphicsLayer.add(RelateResultGraphic);
+						}
+					}
+				}
+				parentApplication.LandRecordsMap.OnParcelFabricResult(resultsCollection,null,true,arPlanResults)
+					
+				map.extent= newExtent;
+				//map.scale = map.scale = 1128.497176;
+				//map.centerAt(map.extent.center);
+				map.panLeft();
+				map.zoom(1.5);
+				
+			}
+			
+			private function onFault2(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Problem");
+			}
+			
+			private function onFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Problem");
+			}
+			private function onAPNIndexQueryFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Assessor book Query problem");
+			}
+			private function onAssessorPageQueryFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Assessor Page Query problem");
+			}
+			protected function superpanel1_closeHandler(event:CloseEvent):void
+			{
+				map.removeLayer(graphicsLayer);
+				if ( parent is Canvas)
+				{
+					parent.removeChild(this);
+				}
+				else if ( parent is Group)
+				{
+					var parentGroup:Group = (this.parent as Group);
+					parentGroup.removeElement(this);
+				}
+			}
+
+			//If the user selects MapBlockLot option we need to fill in the drop downs.
+			//first get all the map names for the first combobox by querying all subdivisions
+			protected function bbSearch_changeHandler(event:IndexChangeEvent):void
+			{
+				if (event.newIndex == 3)
+				{
+					if (! arMapNames)
+					{
+						var queryMapNames:Query = new Query;
+						queryMapNames.returnGeometry = false;
+						queryMapNames.outFields = ["Name", "PlanID"];
+						queryMapNames.where = "OBJECTID > -1";
+						var querytaskMapNames:QueryTask = new QueryTask;
+						querytaskMapNames.useAMF = true;
+						querytaskMapNames.url = "http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/" + _SubdivisionID;
+						querytaskMapNames.execute(queryMapNames,new AsyncResponder(onQueryMapNames, onQueryMapNamesFault));
+					}
+				}
+			}
+			
+			
+			private function onQueryMapNames2(featureSet:FeatureSet, token:Object = null):void
+			{
+
+				if (featureSet.features.length >0)
+				{
+					var newExtent:Extent;
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						if (newExtent == null)
+						{
+							newExtent = graphic.geometry.extent;
+							graphic.symbol = fillSymbol;
+							graphic.visible = true;
+							graphicsLayer.add(graphic);
+						}
+						else
+						{
+							newExtent.union(graphic.geometry.extent);
+							graphic.symbol = fillSymbol;
+							graphic.visible = true;
+							graphicsLayer.add(graphic);
+						}
+					}
+					
+					map.extent= newExtent;
+					//map.scale = 1128.497176;
+					//map.centerAt(newExtent.center);
+					map.panLeft();
+					map.zoom(1.5);
+				}
+
+				
+			}
+			private function onQueryMapNamesFault2(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Map Name for gemoetry problem");
+			}
+			//once we have all the subdivision names  add them to an array and sort them. This array is the
+			//dataprovider for the combobox
+			private function onQueryMapNames(featureSet:FeatureSet, token:Object = null):void
+			{
+				arMapNames = new ArrayCollection();
+				if (featureSet.features.length >0)
+				{
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						arMapNames.addItem({Name: graphic.attributes.Name, PlanID: graphic.attributes.PlanID});
+					}
+				}
+				var dataSortField:SortField = new SortField();
+				dataSortField.name = "Name";
+				dataSortField.numeric = false;
+				var PlanNameDataSort:Sort = new Sort();
+				PlanNameDataSort.fields = [dataSortField];
+				arMapNames.sort = PlanNameDataSort;
+				arMapNames.refresh();
+				
+			}
+			private function onQueryMapNamesFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Map Name Query problem");
+			}
+
+			//When the user picks a map name from the combobox use its planid to query the block
+			//FC and return a list of all blocks in that subdivision/Map. This list will be bound to the second 
+			//combobox in the resulting responder
+			protected function cboMap_changeHandler(event:IndexChangeEvent):void
+			{
+				if (arLotGraphics)
+				{
+					arLotGraphics.removeAll();
+				}
+				if (arLotNames)
+				{
+					arLotNames.removeAll();
+				}
+				if (arBlockGraphics) 
+				{
+					arBlockGraphics.removeAll();
+				}
+				if (arBlockNames) 
+				{
+					arBlockNames.removeAll();	
+				}
+				cboBlock.selectedIndex = -1;
+				cboLot.selectedIndex = -1;
+				cboBlock.textInput.text = "";
+				cboLot.textInput.text = "";
+				
+/* 				for each ( var grBlock:Graphic in arBlockGraphics)
+				{
+					if (grBlock.attributes.Name == cboBlock.selectedItem.Name)
+					{
+						queryMapNames.geometry =grBlock.geometry;
+						queryMapNames.where = "PlanID =" + grBlock.attributes.PlanID;
+					}
+				} */
+				
+				var currenyMap:Object =  arMapNames.getItemAt(event.newIndex);
+				var queryMapNames:Query = new Query;
+				queryMapNames.returnGeometry = true;
+				queryMapNames.outFields = ["Name", "PlanID"];
+				queryMapNames.where = "PlanID =" + currenyMap.PlanID;
+				var querytaskMapNames:QueryTask = new QueryTask;
+				querytaskMapNames.useAMF = true;
+				querytaskMapNames.url = "http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/" + _SubdivBlockID;
+				querytaskMapNames.execute(queryMapNames,new AsyncResponder(onQueryBlockNames, onQueryBlockNamesFault));
+			}
+			
+			//Take the results of the Block query and use it to propagate the second combobox. We also
+			//need to keep track of the geometry in a separate array so we can query for parcles/lots in the next
+			//section. We need to use geometry since there is no was to relate a lot/parcel to its block using key fields
+			private function onQueryBlockNames(featureSet:FeatureSet, token:Object = null):void
+			{
+				arBlockNames = new ArrayCollection();
+				arBlockGraphics = new ArrayCollection();
+				if (featureSet.features.length >0)
+				{
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						arBlockGraphics.addItem(graphic);
+						arBlockNames.addItem({Name: graphic.attributes.Name, PlanID: graphic.attributes.PlanID});
+					}
+				}
+				var dataSortField:SortField = new SortField();
+				dataSortField.name = "Name";
+				dataSortField.numeric = false;
+				var PlanNameDataSort:Sort = new Sort();
+				PlanNameDataSort.fields = [dataSortField];
+				arBlockNames.sort = PlanNameDataSort;
+				arBlockNames.refresh();
+			}
+			
+
+			private function onQueryBlockNamesFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Lot Name Query problem");
+			}
+			
+			//The returned parcels are used to propagate the 3rd combo box. We also keep track of geometry so we can zoom to
+			//the lot/parcel when the user clicks the go button
+			private function onQueryLotNames(featureSet:FeatureSet, token:Object = null):void
+			{
+				arLotNames = new ArrayCollection();
+				arLotGraphics  = new ArrayCollection();
+				if (featureSet.features.length >0)
+				{
+					for each (var graphic:Graphic in featureSet.features)
+					{
+						arLotGraphics.addItem(graphic);
+						arLotNames.addItem({Name: graphic.attributes.Name, PlanID: graphic.attributes.PlanID});
+					}
+				}
+				var dataSortField:SortField = new SortField();
+				dataSortField.name = "Name";
+				dataSortField.numeric = false;
+				var PlanNameDataSort:Sort = new Sort();
+				PlanNameDataSort.fields = [dataSortField];
+				arLotNames.sort = PlanNameDataSort;
+				arLotNames.refresh();
+			}
+			private function onQueryLotNamesFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString(), "Query Block Name Query problem");
+			}
+
+			//When a user picks a Block we use the geometry of the block to query the lot/parcel FC and return the records 
+			//contained by the block. The returned parcels are used to propagate the 3rd combo box
+			protected function cboBlock_changeHandler(event:IndexChangeEvent):void
+			{
+				if (arLotGraphics)
+				{
+					arLotGraphics.removeAll();
+				}
+				if (arLotNames)
+				{
+					arLotNames.removeAll();
+				}
+				cboLot.selectedIndex = -1;
+				cboLot.textInput.text = "";
+				var queryMapNames:Query = new Query;
+				for each ( var grBlock:Graphic in arBlockGraphics)
+				{
+					if (grBlock.attributes.Name == cboBlock.selectedItem.Name)
+					{
+						queryMapNames.geometry =grBlock.geometry;
+						queryMapNames.where = "PlanID =" + grBlock.attributes.PlanID;
+					}
+				}
+				queryMapNames.returnGeometry = true;
+				queryMapNames.outFields = ["Name", "PlanID"];
+				
+				var querytaskMapNames:QueryTask = new QueryTask;
+				querytaskMapNames.useAMF = true;
+				querytaskMapNames.url = "http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/" + _LotParcelID;
+				querytaskMapNames.execute(queryMapNames,new AsyncResponder(onQueryLotNames, onQueryLotNamesFault));
+			}
+
+			protected function cboLot_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		
+		<esri:QueryTask id="QueryEncPlanTableTask"
+						url="http://gisdev/ArcGIS/rest/services/LandRecords_Web/MapServer/{_PlansTableID}"
+						showBusyCursor="true"
+						useAMF="true"/>
+		<esri:Query id="QueryEncPlanTable"
+					returnGeometry="true"
+					outFields="[OBJECTID, Name, DocNumber]"/>
+		<esri:RelationshipQuery id="relatedPlanParcels"
+								outFields="*"
+								relationshipId="{_PlanHasParcelRelationshipID}"
+								returnGeometry="true"/>
+		
+		<esri:SimpleFillSymbol  id="fillSymbol" color="0xFF0033" alpha="0.25" style="null">
+			<esri:SimpleLineSymbol color="0x6600FF" width="4" alpha="1" style="dashdotdot" />
+		</esri:SimpleFillSymbol>
+
+	</fx:Declarations>
+
+<s:Group >
+
+	<s:VGroup verticalAlign="top" horizontalAlign="left" width="100%" height="100%" gap="10">
+		<s:ButtonBar id="bbSearch" dataProvider="{myViewStack}" requireSelection="true" width="100%" change="bbSearch_changeHandler(event)"  >
+
+		</s:ButtonBar> 
+
+		<mx:ViewStack id="myViewStack" 
+					  borderStyle="none"  > 
+			
+			<s:NavigatorContent id="RecYearNo" label="Doc. Number" width="100%" height="100%"> 
+				<s:HGroup>	
+					<s:Label text="Year"/>
+					<s:TextInput id="txtRecordYear" text="" width="50"/>
+					<s:Label text="Number"/>
+					<s:TextInput id="txtRecordNumber" text="" width="85" enter="onNewSearch(event)"/>
+					<s:Button id="btnGoRecYearNo" fontSize="12"
+							  label="Go" 
+							  click="onNewSearch(event)"/>
+				</s:HGroup>
+			</s:NavigatorContent> 
+			
+			<s:NavigatorContent id="bookpage" label="Book/Page"> 
+				<s:HGroup>
+					<s:VGroup>
+						<s:Label text="County Recording Book:"/>
+						<s:TextInput id="txtAPNBook" widthInChars="15" restrict="0-9" maxChars="10" />						
+					</s:VGroup>
+
+					<s:VGroup>
+						<s:Label text="County Recording Page:"/>
+						<s:TextInput id="txtAPNPage" widthInChars="15" restrict="0-9" maxChars="10" />					
+					</s:VGroup>
+					<s:Button id="btnGoTaxIndex" fontSize="12"
+							  label="Go" 
+							  click="onNewSearch(event)"/>
+				</s:HGroup>
+			</s:NavigatorContent> 
+			<s:NavigatorContent id="DocNo" label="Maps"> 
+				<s:HGroup>
+					<s:Label text="Map Number"/>
+					<s:TextInput id="txtDocNumber" text="" width="50"/>
+					<s:Button id="btnGoDocNumber" fontSize="12"
+							  label="Go" 
+							  click="onNewSearch(event)"/>
+				</s:HGroup>
+			</s:NavigatorContent> 
+			<s:NavigatorContent id="MapBlockLot" label="Map/Block/Lot"> 
+				<s:HGroup>
+					<s:VGroup>
+						<s:Label text="Map:"/>
+						<s:ComboBox id="cboMap" dataProvider="{arMapNames}" change="cboMap_changeHandler(event)" labelField="Name" width="175" textAlign="left"/>
+					</s:VGroup>
+					
+					<s:VGroup>
+						<s:Label text="Block:"/>
+						<s:ComboBox id="cboBlock" dataProvider="{arBlockNames}" labelField="Name" change="cboBlock_changeHandler(event)" width="140" textAlign="left"/>					
+					</s:VGroup>
+					<s:VGroup>
+						<s:Label text="Lot:"/>
+						<s:ComboBox id="cboLot" dataProvider="{arLotNames}" labelField="Name" change="cboLot_changeHandler(event)" width="70" textAlign="left"/>					
+					</s:VGroup>
+					<s:Button id="btnGoBlockLot" fontSize="12"
+							  label="Go" 
+							  click="onNewSearch(event)"/>
+				</s:HGroup>
+			</s:NavigatorContent> 
+
+			
+		</mx:ViewStack>
+	</s:VGroup>
+
+</s:Group>
+
+</EncComponents:SuperPanel>

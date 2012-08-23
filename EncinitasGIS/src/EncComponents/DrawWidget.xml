@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<configuration>
+    <geometryservice>http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/Geometry/GeometryServer</geometryservice>
+    <spatialref>102100</spatialref>
+    <distanceunits>
+        <distanceunit abbr="ft" conversion="1">Feet</distanceunit>
+        <distanceunit abbr="mi" conversion="0.000189393939">Miles</distanceunit>
+        <distanceunit abbr="m" conversion="0.3048">Meters</distanceunit>
+        <distanceunit abbr="km" conversion="0.0003048">Kilometers</distanceunit>
+
+    </distanceunits>
+    <areaunits>
+        <areaunit abbr="sq ft" conversion="1">Square Feet</areaunit>
+        <areaunit abbr="sq mi" conversion="0.0000000358700643">Square Miles</areaunit>
+        <areaunit abbr="ac" conversion="0.000029568411">Acres</areaunit>
+        <areaunit abbr="ha" conversion="0.0001">Hectares</areaunit>
+        <areaunit abbr="sq m" conversion="0.0929030400001">Square Meters</areaunit>
+        <areaunit abbr="sq km" conversion="0.0000000929030400001">Square Kilometers</areaunit>
+    </areaunits>
+</configuration>

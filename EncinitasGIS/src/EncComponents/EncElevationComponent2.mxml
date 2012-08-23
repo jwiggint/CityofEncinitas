@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="28" height="28" 
+		 xmlns:esri="http://www.esri.com/2008/ags"
+		 xmlns:EncComponents="EncComponents.*"
+		 initialize="group2_initializeHandler(event)"
+		 currentState="Base" 
+		 width.Expanded="100%" 
+		 height.Expanded="100%">
+	<s:layout>
+		<s:HorizontalLayout/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.Map;
+			import com.esri.ags.esri_internal;
+			import com.esri.ags.events.DrawEvent;
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.geometry.Polyline;
+			import com.esri.ags.tasks.GeometryService;
+			import com.esri.ags.tasks.supportClasses.LengthsParameters;
+			import com.esri.ags.tools.DrawTool;
+			import com.esri.ags.utils.JSON;
+			import com.esri.ags.utils.WebMercatorUtil;
+			
+			import flash.sampler.getGetterInvocationCount;
+			
+			import mx.controls.Alert;
+			import mx.core.IFlexDisplayObject;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.managers.PopUpManager;
+			import mx.managers.PopUpManagerChildList;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.AsyncToken;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.StringUtil;
+			
+			import skins.IconButtonBarSkin;
+			import skins.IconButtonProfileSkin;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable]
+			private var _map:Map;
+			
+			[Bindable]
+			private var _configXML:XML;
+			
+			[Bindable]
+			private var _geometryService:GeometryService;
+			
+			[Bindable]
+			private var drawlength:Number;
+			
+			[Bindable]
+			private var drawGraphic:Graphic
+			
+			[Bindable]
+			private var drawStart:MapPoint
+			
+			public function set Cinfig(value:XML):void {
+				_configXML = value;
+			}
+			
+			protected function onOpened( event:Event ):void
+			{
+				// Add layers
+				map.addLayer( glProfileLine, map.layerIds.length + 1 );
+				
+			}
+			private function onClosed( event:Event ):void {
+				closeChartWindow();
+				map.removeLayer( glProfileLine );
+				draw.deactivate();
+			}
+			
+			/**
+			 * Finish drawing, send sketch to elevation SOE, and receive results from the SOE.<p/>
+			 * <b>NOTE:</b> If the sketched polyline crosses itself or self-intersects, it will
+			 * be simplified on the server. If this happens, the returned paths may be out of
+			 * order and the chart results will be incorrect.
+			 **/
+			private function onDrawProfile( event:DrawEvent ):void {
+				// Revert to navigation
+				draw.deactivate();
+				_map.removeEventListener(MouseEvent.MOUSE_MOVE,onMoseGraphicMove)
+				
+				var drawnLine:Polyline = Polyline(event.graphic.geometry);
+				
+				if (drawnLine)
+				{
+					var lengthsParameters:LengthsParameters = new LengthsParameters();
+					lengthsParameters.geodesic = true;
+					lengthsParameters.polylines = [ drawnLine ];
+					
+					_geometryService.addEventListener(GeometryServiceEvent.LENGTHS_COMPLETE,onLengthComplete);
+					_geometryService.lengths(lengthsParameters);
+					function onLengthComplete(event:GeometryServiceEvent):void
+					{
+						drawlength = (event.result as Array)[0];
+					} 
+				} 
+				
+				
+				// Get geometries for each point
+				var sGeoms:String = JSON.encode( [ event.graphic.geometry ] );
+				var oParams:Object = {
+					"f"				: "json",
+					"geometries"	: sGeoms
+				}
+				
+				// Send geometries off to SOE to get elevations
+				var atToken:AsyncToken = websvcElevations.send( oParams );
+				atToken.addResponder( new AsyncResponder( 
+					
+					//--- Handle results from elevation profile SOE ---//
+					function( event:ResultEvent, token:Object ):void {
+						try {
+							var oResult:Object = JSON.decode( event.result.toString() );
+							if ( oResult.hasOwnProperty( "error" ) )
+								showError( "The server returned an error:\n" + oResult.error.message );
+							else {
+								chtWindow.chartData = {
+									"result"	: oResult,
+									"config"	: _configXML
+								}
+								
+								if ( !systemManager.popUpChildren.contains( chtWindow ) ) {
+									PopUpManager.addPopUp( chtWindow as IFlexDisplayObject, map, false, PopUpManagerChildList.POPUP );
+									PopUpManager.centerPopUp( chtWindow );
+								}
+							}
+						}
+						catch ( err:Error ) {
+							showError( "A problem occurred while parsing and charting the returned elevation data:\n" + err.message.toString() );
+						}
+					},
+					function( event:FaultEvent, token:Object ):void {
+						showError( "Error getting elevation data:\n" + event.fault.message.toString() );
+					} )
+				);
+			}
+			
+			private function showError(errorMessage:String):void
+			{
+				Alert.show( errorMessage);
+			}
+			
+			public function get map():Map
+			{
+				return _map;
+			}
+			
+			public function set map(value:Map):void
+			{
+				_map = value;
+				
+				
+			}
+			
+			public function get geometryService():GeometryService
+			{
+				return _geometryService;
+			}
+			
+			public function set geometryServiceap(value:GeometryService):void
+			{
+				_geometryService = value;
+				
+			}
+			public function onDrawStart(event:DrawEvent):void
+			{
+				(event.currentTarget as DrawTool).graphicsLayer.clear();
+				//(event.graphic.geometry as Polyline).
+				drawGraphic = event.graphic;
+				_map.addEventListener(MouseEvent.MOUSE_MOVE,onMoseGraphicMove)
+				drawStart = MapPoint(event.graphic.geometry);
+				
+				
+				/* 				drawGraphic = event.graphic;
+				drawGraphic.attributes.toString() */
+				
+			}
+			/**
+			 * Close chart window and remove user-drawn line graphic
+			 **/ 
+			private function closeChartWindow():void {
+				glProfileLine.clear();
+				PopUpManager.removePopUp( chtWindow );
+				
+			}
+			private function onClick(event:MouseEvent):void
+			{
+				if (currentState =="Base") 
+				{
+					
+					setCurrentState("Expanded");
+					map.openHandCursorVisible = false;
+					map.panEnabled = false;
+					map.addLayer( glProfileLine, map.layerIds.length + 1 );
+					
+					
+					
+				}
+				else
+				{
+					setCurrentState("Base")
+					closeChartWindow();
+					map.removeLayer( glProfileLine );
+					draw.deactivate();
+					
+				}
+			}
+			
+			private function onMoseGraphicMove(event:MouseEvent):void
+			{
+				if (drawGraphic.geometry){
+					//var drawnLine:Polyline =Polyline((event.target as Graphic).geometry)
+					var endPoint:MapPoint = _map.toMapFromStage(event.stageX, event.stageY);
+					if (!drawStart)
+					{
+						var drawLine:Polyline = Polyline(drawGraphic.geometry);
+						//drawStart =drawLine.paths[0][0];
+						drawStart = WebMercatorUtil.webMercatorToGeographic(drawLine.paths[0][0]) as MapPoint;
+					}
+					var geoPoint:MapPoint = WebMercatorUtil.webMercatorToGeographic(endPoint) as MapPoint;
+					//drawlength = geoPoint.x
+					//drawlength = (Math.sqrt(Math.pow((endPoint.x - drawStart.x),2) + Math.pow((endPoint.y - drawStart.y),2))) / 1.2;
+					//drawlength = Math.acos(Math.cos((Math.PI/180)*(90-drawStart.y)) *Math.cos((Math.PI/180)*(90-endPoint.y)) +Math.sin((Math.PI/180)*(90-drawStart.y)) *Math.sin((Math.PI/180)*(90-endPoint.y)) *Math.cos((Math.PI/180)*(drawStart.x-endPoint.x))) *6371000
+					drawlength = Math.acos(Math.cos((Math.PI/180)*(90-drawStart.y)) *Math.cos((Math.PI/180)*(90-geoPoint.y)) +Math.sin((Math.PI/180)*(90-drawStart.y)) *Math.sin((Math.PI/180)*(90-geoPoint.y)) *Math.cos((Math.PI/180)*(drawStart.x-geoPoint.x))) *6371000
+					/* 					var drawnLine:Polyline =Polyline(drawGraphic.geometry)
+					var lengthsParameters:LengthsParameters = new LengthsParameters();
+					lengthsParameters.geodesic = true;
+					lengthsParameters.polylines = [ drawnLine ];
+					
+					_geometryService.addEventListener(GeometryServiceEvent.LENGTHS_COMPLETE,onLengthComplete);
+					_geometryService.lengths(lengthsParameters);
+					function onLengthComplete(event:GeometryServiceEvent):void
+					{
+					drawlength = (event.result as Array)[0];
+					
+					}  */
+				}
+				
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				if (currentState == "Base")
+				{
+					currentState = "Expanded"
+					map.openHandCursorVisible = false;
+					map.panEnabled = false;
+					map.addLayer( glProfileLine, map.layerIds.length + 1 );
+				}
+				else
+				{
+					currentState="Base"
+				}
+			}
+
+			protected function button1_rollOverHandler(event:MouseEvent):void
+			{
+
+			}
+
+
+			protected function group1_rollOutHandler(event:MouseEvent):void
+			{
+
+			}
+
+
+			protected function buttonbar1_rollOutHandler(event:MouseEvent):void
+			{
+				if (currentState == "Base")
+				{
+					currentState = "Expanded"
+					map.openHandCursorVisible = false;
+					map.panEnabled = false;
+					map.addLayer( glProfileLine, map.layerIds.length + 1 );
+				}
+				else
+				{
+					currentState="Base"
+				}
+			}
+
+
+			protected function buttonbar1_changeHandler(event:IndexChangeEvent):void
+			{
+				
+				
+				switch ( event.newIndex ) { 
+					case 0:		
+						draw.activate( DrawTool.LINE, false );
+						break;
+					case 1:
+						draw.activate( DrawTool.POLYLINE, false );
+						
+						// Navigation-while-drawing issue
+						// Workaround from forum post: http://forums.esri.com/Thread.asp?c=158&f=2421&t=299768#936563
+						map.panEnabled = false; 
+						map.mapNavigationEnabled = false; 
+						map.rubberbandZoomEnabled = false; 
+						break;
+					case 2:
+						draw.activate( DrawTool.FREEHAND_POLYLINE, false );
+						map.panEnabled = false; 
+						map.mapNavigationEnabled = false; 
+						map.rubberbandZoomEnabled = false; 
+						break;
+				}
+			}
+
+
+			protected function group2_initializeHandler(event:FlexEvent):void
+			{
+				var httpS:HTTPService = new HTTPService("http://gisweb:9231/siteprofiler/configs/ElevationProfileWidget.xml");
+				httpS.resultFormat = "e4x";
+				httpS.addEventListener(ResultEvent.RESULT,onHTTPResultProfile);
+				httpS.addEventListener(FaultEvent.FAULT,onHTTPResultFault);
+				httpS.url="http://gisweb:9231/siteprofiler/configs/ElevationProfileWidget.xml"
+				httpS.useProxy = false;
+				httpS.send();
+				
+				function onHTTPResultProfile(event:ResultEvent):void
+				{
+					Cinfig = event.result as XML;
+				}
+				function onHTTPResultFault(evt:FaultEvent):void {
+					var title:String = evt.type + " (" + evt.fault.faultCode + ")";
+					var text:String = evt.fault.faultString;
+					Alert.show(text, title);
+				}
+			}
+
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="Base"/>
+		<s:State name="Expanded"/>
+	</s:states>
+	<fx:Declarations>
+		<esri:DrawTool id="draw" map="{_map}" graphicsLayer="{glProfileLine}" 
+					   drawStart="onDrawStart(event)" 
+					   drawEnd="onDrawProfile(event)"   />
+		<esri:GraphicsLayer id="glProfileLine" mouseEnabled="false" visible="true" >
+			<esri:symbol>
+				<esri:SimpleLineSymbol color="{_configXML.profileLineColor}" width="{_configXML.profileLineWidth}"/>
+			</esri:symbol>
+		</esri:GraphicsLayer>
+		
+		<!-- Using POST since GET doesn't always handle lines with large #s of points -->
+		<s:HTTPService showBusyCursor="true" method="POST" id="websvcElevations" url="{_configXML.elevationSOEURL}" resultFormat="text"/>
+		
+		<!-- Chart pop-up window -->
+		<EncComponents:ChartWindow styleName="styleLikeWidgetTemplate" title="{_configXML.chartTitle}" close="closeChartWindow()" id="chtWindow" glProfileLine="{glProfileLine}"/>
+
+	</fx:Declarations>
+	<s:Group rollOut="group1_rollOutHandler(event)">
+		<s:ButtonBar includeIn="Expanded" rollOut="buttonbar1_rollOutHandler(event)" skinClass="skins.IconButtonBarSkin" change="buttonbar1_changeHandler(event)">
+			<s:ArrayCollection>
+				<fx:Array>
+					<fx:Object data="Line" imageIcon="@Embed(source='assets/icons/i_draw_line.png')" label="Draw line (click, drag, release)"/>
+					<fx:Object data="PolyLine" imageIcon="@Embed('assets/icons/i_draw_polyline.png')" label="Draw polyline (click once for each vertex)"/>
+					<fx:Object data="Freeline" imageIcon="@Embed('assets/icons/i_draw_freeline.png')" label="Draw freehand line (click, drag, release)"/>
+				</fx:Array> 
+			</s:ArrayCollection>
+		</s:ButtonBar>
+		<s:Button width="32" height="32" id="btnProfile"
+				  label="Click to to get the elevation profile accross a line on the map"
+				  includeIn="Base"
+				  skinClass="skins.IconButtonProfileSkin" 
+				  rollOver="button1_rollOverHandler(event)" 
+				  click="button1_clickHandler(event)"/>
+	</s:Group>
+</s:Group>

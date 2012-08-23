@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<SSRSReports>
+	<folders>
+		<folder name = "Traffic">
+			<report name = "Accident Summary By Date" url ="http://dellsql/Reports$DELLSQL2008/Pages/Report.aspx?ItemPath=%2fTraffic%2fAccident+Summary+By+Date">
+				</report>
+			<report name = "subtran_AccidentsByDate" url ="http://dellsql/Reports$DELLSQL2008/Pages/Report.aspx?ItemPath=%2fTraffic%2fsubtran_AccidentsByDate">
+				</report>
+		</folder>
+		<folder name = "Citywide Reports">
+			<folder name = "Cityworks Summary Reports">
+				<report name = "Cityworks Work Order Matrix Example" url ="http://dellsql/Reports$DELLSQL2008/Pages/Report.aspx?ItemPath=%2fCitywide+Reports%2fCityworks+Summary+Reports%2fCityworks+Work+Order+Matrix+Example">
+					</report>	
+				<folder name = "Clean Water Division">
+					<report name = "CW_NPDES_Annual" url ="http://dellsql/Reports$DELLSQL2008/Pages/Report.aspx?ItemPath=%2fCitywide+Reports%2fCityworks+Summary+Reports%2fClean+Water+Division%2fCW_NPDES_Annual">
+						</report>	
+					<report name = "subCWGraffitiEquip" url ="http://dellsql/Reports$DELLSQL2008/Pages/Report.aspx?ItemPath=%2fCitywide+Reports%2fCityworks+Summary+Reports%2fClean+Water+Division%2fsubCWGraffitiEquip">
+						</report>
+				</folder>	
+			</folder>
+			<folder name = "E Drawing Room">
+			</folder>	
+		</folder>
+	</folders>
+</SSRSReports>

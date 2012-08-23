@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		xmlns:EncComponents="EncComponents.*" >
+	<s:layout>
+		<s:BasicLayout/>			
+		
+	</s:layout> 
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.geometry.Extent;
+			import com.esri.ags.geometry.MapPoint;
+			
+			import flash.filters.BitmapFilterQuality;
+			import flash.filters.GlowFilter;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.MoveEvent;
+				
+				[Bindable]
+				public var pointClicked:MapPoint
+			
+			
+			[Bindable]
+			private var _mapExtent:Extent
+			
+			/* 		public function get CurrentPoint():MapPoint
+			{
+			return pointClicked;
+			}
+			
+			public function set CurrentPoint(value:MapPoint):void
+			{
+			pointClicked = value;
+			} */		
+			
+			public function get curmap():Extent 
+			{
+				return _mapExtent;
+			}
+			
+			public function set curmap(value:Extent):void
+			{
+				_mapExtent = value;
+			} 
+			
+			private function onMouseOver(event:MouseEvent):void
+			{
+				var glow:GlowFilter = new GlowFilter();
+				glow.color = 0x009922;
+				glow.alpha = 1;
+				glow.blurX = 25;
+				glow.blurY = 25;
+				glow.quality = BitmapFilterQuality.MEDIUM;
+				image1.filters = [glow];
+			}
+			
+			private function onMouseOut(event:MouseEvent):void
+			{
+				
+				image1.filters = [];
+			}
+			
+			private function onMinimize(event:MouseEvent):void
+			{
+				currentState = '';
+			}
+			
+			private function onVBoxMouseOut(event:MouseEvent):void
+			{
+				currentState = '';
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:states>
+		<s:State name="Default"/> 
+		<s:State name="Expanded"/>
+	</s:states>
+
+	<mx:VBox horizontalAlign="center" verticalAlign="middle" id="vbox1" 
+			 width="38" height="38" 
+			 width.Expanded="{(parentApplication.width / 100) * 70}"  height.Expanded="{(parentApplication.height / 100) * 70}"
+			 includeIn="Default, Expanded">
+		<mx:Image source="@Embed('/assets/icons/carousel.png')" id="image1" includeIn="Default"
+				  click="currentState='Expanded'" mouseOver="onMouseOver(event)" mouseOut="onMouseOut(event)"    width="100%" height="100%"/>
+	<EncComponents:EncinitasDisplayShelf  clickPoint="{pointClicked}"
+										  id="NewDispShelf" 
+										  curmap="{_mapExtent}" 
+										  width="{(parentApplication.width / 100) * 70}" 
+										  height="{(parentApplication.height / 100) * 70}" 
+										  rollOut="onVBoxMouseOut(event)"
+										  includeIn= "Expanded" /> 
+
+	</mx:VBox>  
+</s:Group>

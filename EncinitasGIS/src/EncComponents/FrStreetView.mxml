@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+////////////////////////////////////////////////////////////////////////////////
+//
+// FrStreetView - Version 1.1
+// 1.1 - Added fix for cursor - removeAllCursors
+// 
+// 
+// 
+//   
+// 
+// Created by Frank Roberts
+////////////////////////////////////////////////////////////////////////////////
+-->
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+                   xmlns:s="library://ns.adobe.com/flex/spark"
+                   xmlns:mx="library://ns.adobe.com/flex/mx"
+                   xmlns:esri="http://www.esri.com/2008/ags" 
+                   xmlns:viewer="com.esri.viewer.*">
+    <fx:Script>
+        <![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.Map;
+			import com.esri.ags.SpatialReference;
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.events.MapMouseEvent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.symbols.PictureMarkerSymbol;
+			import com.esri.ags.symbols.SimpleMarkerSymbol;
+			import com.esri.ags.tasks.GeometryService;
+			import com.esri.ags.utils.WebMercatorUtil;
+			
+			import flash.net.navigateToURL;
+			
+			import mx.controls.Alert;
+			import mx.controls.TextArea;
+			import mx.managers.CursorManager;
+			import mx.managers.PopUpManager;
+			
+			import org.osmf.utils.URL;
+						
+			public var frLat:String;
+			public var frLong:String;
+			
+			private var graphicsLayer:GraphicsLayer;
+			private var graphicPointSym:PictureMarkerSymbol;
+			private var map:Map;
+			// Define a variable to hold the cursor ID.
+			private var cursorID:Number = 0;
+			// Embed the cursor symbol.
+			[Embed(source="assets/icons/i_gsv.png")]
+			private var manCursorSymbol:Class;
+			
+            //this function called when the widget's configuration is loaded
+            private function init():void
+            {
+/*                 if (configXML) // checking for valid content in the configuration file
+                {
+                    lbl.text = configXML.content || "Change this text in config file.";
+                } */
+				graphicPointSym = new PictureMarkerSymbol(manCursorSymbol, 30, 30)
+				graphicsLayer = new GraphicsLayer();
+				graphicsLayer.name = "Street Results";
+				graphicsLayer.symbol = graphicPointSym;	
+				map.addLayer(graphicsLayer);
+			}
+
+			private function mouseClickHandler(event:MouseEvent):void
+			{
+				const frmapPoint:MapPoint = map.toMapFromStage(event.stageX, event.stageY);
+				var latlong:MapPoint;
+				var wkidString:String = frmapPoint.spatialReference.wkid.toString();
+				//Alert.show("Spatial Ref for map: " + frmapPoint.spatialReference.wkid.toString());
+				if ( wkidString == "102100")
+				{
+					latlong = WebMercatorUtil.webMercatorToGeographic(frmapPoint) as MapPoint;
+					frLat = latlong.y.toFixed(6);
+					frLong = latlong.x.toFixed(6);
+					displayForm(frLat, frLong);
+				}
+				else if ( wkidString == "3857")
+				{
+					latlong = WebMercatorUtil.webMercatorToGeographic(frmapPoint) as MapPoint;
+					frLat = latlong.y.toFixed(6);
+					frLong = latlong.x.toFixed(6);
+					displayForm(frLat, frLong);
+				}
+				else if ( wkidString == "4326")
+				{
+					latlong = map.toMapFromStage(event.stageX, event.stageY);
+					frLat = latlong.y.toFixed(6);
+					frLong = latlong.x.toFixed(6);
+					displayForm(frLat, frLong);
+				}
+				else
+				{
+					//Project using geometry service
+					var outSR:SpatialReference = new SpatialReference(4326);
+					geometryService.project([frmapPoint as Geometry], outSR);
+				}
+				
+				var graphic:Graphic = new Graphic();	
+				var mapPoint2:MapPoint = frmapPoint;
+				mapPoint2.spatialReference = map.spatialReference;				
+				graphic.geometry = mapPoint2;				
+				graphicsLayer.clear();				
+				graphicsLayer.add(graphic);
+			}
+			
+			public function set _map(value:Map):void
+			{
+				_map = value;
+			}
+			public function get _map():Map
+			{
+				return _map;
+			}
+				
+			private function projectCompleteHandler(event:GeometryServiceEvent):void
+			{
+				try
+				{
+					// Note: As of version 2.0, GeometryService returns geometries (instead of graphics)
+					var pt:MapPoint = (event.result as Array)[0]as MapPoint;					
+					//Alert.show(pt.x + ", " + pt.y);
+					displayForm(pt.y.toString(),pt.x.toString());
+				}
+				catch (error:Error)
+				{
+					Alert.show(error.toString());
+				}
+			}
+			
+			public function displayForm(lat:String,long:String):void {
+				var myURL:String;
+				if (comboBox1.value.toString() == "Dual Viewer"){
+					// Dual View
+					myURL = "http://data.mapchannels.com/mm/dual2/map.htm?x=" + long + "&y=" + lat + "&z=16&gm=0&ve=3&gc=0&xb=" + long + "&yb=" + lat + "&zb=1&db=0&bar=0&mw=1&sv=1&svb=0&mi=0&mg=1&mv=1%20marginwidth='0'%20marginheight='0'%20frameborder='0'%20scrolling='no'";
+				}
+				else if (comboBox1.value.toString() == "Bing Maps") {
+					// bing oblique
+					myURL = "http://www.bing.com/maps/?v=2&cp=" + lat + "~" + long + "&lvl=15&sty=b";
+				}
+				else if (comboBox1.value.toString() == "Google Map") {
+					// Google Map
+					myURL = "http://data.mapchannels.com/locationmap/100/map.htm?mx=" + long + "&my=" + lat + "&mz=16&mt=2&dm=0&mw=250&tc=2&mn=3";
+				}				
+				else if (comboBox1.value.toString() == "Street View Only") {
+					// Street View Only
+					myURL = "http://data.mapchannels.com/locationmap/100/map.htm?mx=" + long + "&my=" + lat + "&mz=15&mt=2&dm=1&mw=250&tc=2&mn=3" ;
+				}
+				else if (comboBox1.value.toString() == "Street View-Google Map") {
+					// Street View/Google Map Vertical
+					myURL = "http://data.mapchannels.com/locationmap/100/map.htm?mx=" + long + "&my=" + lat + "&mz=15&mt=2&dm=3&mw=250&tc=2&mn=3" ;
+				}				
+								
+				if (comboBox.value.toString() == "Open in Flash"){
+					var pop1:WebForm = WebForm(
+					PopUpManager.createPopUp(this, WebForm, true));
+					pop1.title = myURL;
+					pop1.showCloseButton=true;
+					PopUpManager.centerPopUp(pop1);
+				}
+				else if (comboBox.value.toString() == "Open in new browser window") {
+					var myURL2:URLRequest = new URLRequest(myURL);
+					navigateToURL(myURL2);
+				}
+			}
+			private function widgetOpenedHandler(event:Event):void
+			{
+				if (graphicsLayer)
+				{
+					graphicsLayer.visible = true;
+				}				
+				map.addEventListener(MapMouseEvent.MAP_CLICK,mouseClickHandler);
+				// Turn on little man cursor
+				cursorID = CursorManager.setCursor(manCursorSymbol);
+				if (graphicsLayer)
+				{
+					graphicsLayer.clear();
+				}
+			}
+			
+			private function widgetClosedHandler(event:Event):void
+			{
+				if (graphicsLayer)
+				{
+					graphicsLayer.visible = false;
+				}
+				map.removeEventListener(MapMouseEvent.MAP_CLICK, mouseClickHandler);
+				// Turn off little man cursor
+				CursorManager.removeAllCursors();				
+			}
+			
+			private function onFault(info:Object, token:Object = null):void
+			{
+				Alert.show(info.toString());
+			}
+        ]]>
+    </fx:Script>
+	<fx:Declarations>
+		<esri:GeometryService id="geometryService"
+							  concurrency="last"
+							  fault="onFault(event)"
+							  projectComplete="projectCompleteHandler(event)"
+							  url="http://sampleserver3.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer"/>
+	</fx:Declarations>
+    <s:VGroup id="frStreetView" 
+						   width="300" height="300" 
+						   y="500"   >
+        <s:layout>
+            <s:VerticalLayout horizontalAlign="center" verticalAlign="middle"/>
+        </s:layout>
+		
+        <s:Label id="lbl" fontStyle="normal" fontSize="12" />
+		<mx:Spacer width="100%" height="20" />
+		<s:Label id="lbl4" fontStyle="normal" text="Select content form:" fontSize="12" />
+		<mx:ComboBox id="comboBox1"					 
+					 selectedIndex="0"
+					 dropdownWidth="180"
+					 horizontalCenter="0"
+					 top="20">
+			<mx:dataProvider>
+				<fx:Array>
+					<fx:Object label="Dual Viewer" />
+					<fx:Object label="Bing Maps" />	
+					<fx:Object label="Google Map" />
+					<fx:Object label="Street View Only" />
+					<fx:Object label="Street View-Google Map" />					
+				</fx:Array>
+			</mx:dataProvider>
+		</mx:ComboBox>
+		
+		<mx:Spacer width="100%" height="20" />
+		<s:Label id="lbl2" text="Select window to open content:" fontStyle="normal" fontSize="12" />
+		<mx:ComboBox id="comboBox"					 
+					 selectedIndex="0"
+					 dropdownWidth="180"
+					 horizontalCenter="0"
+					 top="20">
+			<mx:dataProvider>
+				<fx:Array>
+					<fx:Object label="Open in Flash" />
+					<fx:Object label="Open in new browser window" />					
+				</fx:Array>
+			</mx:dataProvider>
+		</mx:ComboBox>
+		<mx:Spacer width="100%" height="20" />
+		<mx:LinkButton id="link1" label="Content provided by MapChannels.com" fontStyle="italic"
+					   click="navigateToURL(new URLRequest('http://www.mapchannels.com'), 'quote')"/>
+		<mx:LinkButton id="link2" label="Widget Developed by Frank Roberts" fontStyle="italic"
+					  click="navigateToURL(new URLRequest('mailto:frank_m_roberts@hotmail.com'), 'quote')"/>
+    </s:VGroup >
+</s:Group >

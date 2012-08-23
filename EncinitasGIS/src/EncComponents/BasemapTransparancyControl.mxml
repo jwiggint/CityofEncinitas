@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<s:Group		   xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:esri="http://www.esri.com/2008/ags"
+				   rollOut="currentState=''" contentBackgroundColor.OnHover="#035C33" alpha=".75"
+				   rollOutEffect="{fade10}"
+				   rollOverEffect="{fade01}">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+
+	
+				   				   
+<fx:Script>
+	<![CDATA[
+		import com.esri.ags.layers.Layer;
+		
+		import mx.controls.sliderClasses.Slider;
+		import mx.events.ItemClickEvent;
+		import mx.events.SliderEvent;
+		
+		[Bindable]
+		private var _BMLayer:Layer;
+		[Bindable]
+		private var _BMPlusLayer:Layer;
+		
+/* 		[Embed(source='assets/icons/plus.png')]
+		private var iconPlus:Class;
+		
+		[Embed(source='assets/icons/minus.png')]
+		private var iconMinus:Class;	 */		
+		
+		
+		public function get BMPlusLayer():Layer
+		{
+			return _BMPlusLayer;
+		}
+		
+		public function set BMPlusLayer(value:Layer):void
+		{
+			_BMPlusLayer = value;
+			
+		}
+		
+		public function get BMLayer():Layer
+		{
+			return _BMLayer;
+		}
+		
+		public function set BMLayer(value:Layer):void
+		{
+			_BMLayer = value;
+			
+		}
+		private function onRollOut(event:MouseEvent):void
+		{
+			currentState=''
+		}
+		
+		/* 	        private function onSliderChange(event:SliderEvent):void
+		{
+		var currentSlider:Slider=Slider(event.currentTarget);
+		_BMPlusLayer.alpha = currentSlider.value;
+		_BMLayer.alpha= 1 - currentSlider.value;
+		
+		} */
+		
+		private function onToggleBasemap(event:Event):void
+		{
+			if (rdoBasemap.selected)
+			{
+				_BMLayer.visible=true;
+				_BMPlusLayer.visible=false; 	        		
+			}
+			else if (rdoBasemapPlus.selected)
+			{
+				_BMLayer.visible=false;
+				_BMPlusLayer.visible=true;	        		
+			}
+				
+			else
+			{
+				_BMLayer.visible=false;
+				_BMPlusLayer.visible=false;
+			}
+			
+			/* 	        	if (_BMLayer.visible == true)
+			{
+			_BMLayer.visible=false;
+			_BMPlusLayer.visible=false;
+			//toggle.setStyle("icon", iconPlus);
+			}
+			else
+			{
+			
+			//toggle.setStyle("icon", iconMinus);     		
+			} */
+		}
+	]]>
+</fx:Script>
+	
+	<fx:Declarations>
+		<s:Fade id="fade01"
+				alphaFrom="0.75"
+				alphaTo="1.0"
+				duration="500"/>
+		<s:Fade id="fade10"
+				alphaFrom="1.0"
+				alphaTo="0.75"
+				duration="500"/>
+		
+	</fx:Declarations>
+	
+
+	
+	<s:states>
+		<s:State name="Default"/>
+		<s:State name="OnHover"/>
+
+
+	</s:states>
+	
+	
+		
+	
+	<s:Rect width="100%" height="100%" radiusX="10" radiusY="10"  >
+		<s:stroke>
+			<s:SolidColorStroke color="0x000000" weight="1.0"/>
+		</s:stroke>
+		<s:fill  >
+			<s:SolidColor color="#BAC19F"/>
+		</s:fill>
+	</s:Rect>
+	<s:VGroup width="100%" height="100%" >
+	<s:Label  text="Basemap Control" id="linkbutton1" 
+			  click="setCurrentState('OnHover')" 
+			  rollOver="setCurrentState('OnHover')"  
+			  chromeColor.Default="#BAC19F" 
+			  chromeColor.OnHover="#BAC19F" 
+			  width="125" height="24" 
+			  textAlign="center" 
+			  verticalAlign.OnHover="middle" 
+			  verticalAlign.Default="middle" 
+			  fontWeight.Default="bold"/>
+		<s:VGroup includeIn="OnHover" width="100%" height="100%" paddingLeft="10" >
+			<s:RadioButton   width="101" id="rdoBasemap"  groupName="BasemapLayers" label="Basemap" selected="true" click="onToggleBasemap(event)" includeIn="OnHover"  chromeColor="#C5C7C6"/>
+			<s:RadioButton   width="107" id="rdoBasemapPlus" groupName="BasemapLayers" label="Basemap Plus" click="onToggleBasemap(event)" includeIn="OnHover"/>
+			<s:RadioButton   width="101" id="rdoNoBasemap" groupName="BasemapLayers" label="No Basemap"  click="onToggleBasemap(event)" includeIn="OnHover" />
+		</s:VGroup>
+	</s:VGroup>
+</s:Group>

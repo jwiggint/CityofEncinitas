@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group 	xmlns:mx="library://ns.adobe.com/flex/mx"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 width.Default="174" 
+		 height.Default="24"
+		 height.MouseOver="190"
+		 width.MouseOver ="210"
+		 y.MouseOver = "{parentApplication.height - 200}" xmlns:EncComponents="EncComponents.*"
+		 >
+
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.layers.Layer;
+			
+			import mx.collections.ArrayCollection;
+
+			[Bindable]
+			private var _aIndividualLayers:ArrayCollection;
+			[Bindable]
+			private var _aLayersTOC:Layer;
+
+		    public function get aLayersTOC():Layer
+	        {
+	            return _aLayersTOC;
+	        }
+
+	        public function set aLayersTOC(value:Layer):void
+	        {
+				_aLayersTOC = value;
+	        }
+
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="Default"/>			
+		<s:State name="MouseOver"/>
+	</s:states>
+<!--	
+	
+	backgroundColor="#9FB3C1" 
+	backgroundAlpha="0.75" 
+	themeColor="#23C3E0" 
+	borderStyle="solid" 
+	borderColor="#032B6D" 
+	cornerRadius="5"
+	
+	
+	<mx:states>
+		<mx:State name="MouseOver" >
+		<mx:RemoveChild target="{lnkShowLayers}"/>
+			<mx:SetProperty name="y" value="{parentApplication.height - 200}"/>
+			<mx:SetProperty name="height" value="190"/>
+			<mx:SetProperty name="width" value="210"/>
+			<mx:AddChild  >
+
+			</mx:AddChild>
+			<mx:AddChild>
+
+			</mx:AddChild>
+
+		</mx:State>
+	</mx:states>-->
+	<s:Rect width.Default="174" width.MouseOver="210" height.Default="24" height.MouseOver="190" radiusX="10" radiusY="10"
+			left.MouseOver="-5" right.MouseOver="-5" top.MouseOver="-5" bottom.MouseOver="-5">
+		<s:stroke>
+			<s:SolidColorStroke color="0x000000" weight="1.2"/>
+		</s:stroke>
+		<s:fill  >
+			<s:SolidColor color="#9FB3C1"/>
+		</s:fill>
+	</s:Rect>
+	
+	<s:VGroup verticalAlign="middle" >
+		
+	
+		<mx:LinkButton includeIn="Default" 
+					   label="Turn on or off layers" 
+					   id="lnkShowLayers" 
+					   click="currentState='MouseOver'" 
+					   cornerRadius="10" 
+					   width="174" rollOverColor="#9FB3C1"
+					   left="0" top="0"/>
+		<EncComponents:LayerTOC includeIn="MouseOver" 
+								id="dgLayers" 
+								paddingBottom="5" paddingLeft="5" paddingTop="5" paddingRight="5"
+								left="5" right="5" top="5" bottom="5"
+								width="210" height="164"
+								mapLayer="{_aLayersTOC}">
+			
+		</EncComponents:LayerTOC>
+		
+	<!--	<mx:AdvancedDataGrid includeIn="MouseOver" id="dgLayers" x="10" y="10" width="170" height="143" dataProvider="{_aLayersTOC}"  >
+			<mx:dataProvider>
+				<mx:GroupingCollection2 id="gc" source="{_aLayersTOC}">
+					<mx:grouping>
+						<mx:Grouping>
+							<mx:GroupingField name="parentLayerId"/>
+						</mx:Grouping>
+					</mx:grouping>
+				</mx:GroupingCollection2>
+			</mx:dataProvider>  
+			
+			<mx:columns>
+				<mx:AdvancedDataGridColumn dataField="visable" headerText="Visibility" width="50"
+								   itemRenderer="EncComponents.LayerVizRenderer"/>
+				<mx:AdvancedDataGridColumn  dataField="id" headerText="Layer Name"/>
+				<mx:AdvancedDataGridColumn  dataField="alpha" headerText="Transparency" width="50"
+									itemRenderer="EncComponents.TransparencyControl" /> 
+			</mx:columns>
+		</mx:AdvancedDataGrid>-->
+		
+		<mx:Spacer includeIn="MouseOver" height="100%"/>
+		<mx:LinkButton includeIn="MouseOver" label="Hide" click="currentState=''" width="210" bottom="0" rollOverColor="#9FB3C1"  />
+	</s:VGroup>
+</s:Group>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+-->
+<Canvas backgroundColor="#000066" xmlns="http://www.adobe.com/2006/mxml" xmlns:EncComponents="EncComponents.*"
+
+	
+>
+	
+	<Binding source="sel.value" destination="shelf.selectedIndex" />
+	<Binding destination="sel.value" source="shelf.selectedIndex" />
+	
+	<Binding source="angle.value" destination="shelf.angle" />
+	<Binding source="pop.value" destination="shelf.popout" />
+	<Binding source="_mapExtent.xmin" destination="xmin" />
+	<Binding source="_mapExtent.ymin" destination="ymin" />
+	<Binding source="_mapExtent.xmax" destination="xmax" />
+	<Binding source="_mapExtent.ymax" destination="ymax" />
+	
+	<Script>
+        <![CDATA[
+        	import com.esri.ags.geometry.MapPoint;
+        	import flash.net.navigateToURL;
+        	import mx.controls.Image;
+            import mx.events.FlexEvent;
+            import mx.controls.Alert;
+            import com.esri.ags.geometry.Extent;
+            import mx.binding.utils.BindingUtils;
+            
+            [Bindable]
+            public var clickPoint:MapPoint
+            
+            [Bindable]
+			private var _mapExtent:Extent;
+
+			private var xmin:Number= new Number;
+			private var ymin:Number= new Number;
+			private var xmax:Number= new Number;
+			private var ymax:Number= new Number;
+			
+			
+            
+            private var strZoningURL:String = "http://ezoningdev.cityofencinitas.org/zoningtest.html"
+            private var strFinderURL:String = "http://finder.cityofencinitas.org/Finder.html"
+            
+            
+           public function get curmap():Extent 
+	        {
+	            return _mapExtent;
+	        }
+	            
+	        public function set curmap(value:Extent):void
+	        {
+	            _mapExtent = value;
+	        }
+        
+            private function startApp():void
+            {
+            		//Alert.show("Would you like to start GIS Application")
+            }
+            private function mouseOverHandler(event:MouseEvent):void
+            {
+            	
+            	//var img:Object=event.target
+            	//trace(img.name)
+            	//shelf.dataProvider
+            	//sel.value=ds.currentPosition
+            	
+            }
+            private function mouseOutHandler(event:MouseEvent):void
+            {
+            	
+            }
+            private function onClickZoning(event:Event):void
+            {
+
+            	if (  shelf.currentPosition == 4 )
+            	{
+            		
+            		if (_mapExtent)
+            		{
+            			if (clickPoint)
+            			{
+            				var urlRequest:URLRequest = new URLRequest(strZoningURL + '?site=zoning&start=extent&xmin=' 
+            				+ xmin.toString() + '&ymin=' + ymin.toString() + '&xmax=' + xmax.toString() + '&ymax='+ ymax.toString() 
+            				+ '&X=' + clickPoint.x + '&Y=' + clickPoint.y);                              
+            				navigateToURL(urlRequest, "_blank"); 
+            			}
+            			else
+            			{
+            				var urlRequest2:URLRequest = new URLRequest(strZoningURL + '?site=zoning&start=extent&xmin=' 
+            				+ xmin.toString() + '&ymin=' + ymin.toString() + '&xmax=' + xmax.toString() + '&ymax='+ ymax.toString());                              
+            				navigateToURL(urlRequest2, "_blank"); 
+            			}
+
+            		}
+            		else
+            		{
+            			var urlRequest3:URLRequest = new URLRequest(strZoningURL);
+            			navigateToURL(urlRequest3, "_blank"); 
+            		}
+
+            	}
+            }
+            
+             private function onClickFinder(event:Event):void
+            {
+
+            	if (  shelf.currentPosition == 2 )
+            	{
+            		if (_mapExtent)
+            		{
+            			var urlRequest:URLRequest = new URLRequest(strFinderURL + '?site=zoning&start=extent&xmin=' 
+            			+ xmin.toString() + '&ymin=' + ymin.toString() + '&xmax=' + xmax.toString() + '&ymax='+ ymax.toString()
+            			+ '&X=' + clickPoint.x + '&Y=' + clickPoint.y);
+            			navigateToURL(urlRequest, "_blank"); 
+            		}
+            		else
+            		{
+            			var urlRequest2:URLRequest = new URLRequest(strFinderURL);
+            			navigateToURL(urlRequest2, "_blank"); 
+            		}
+            	}
+            }
+            
+            private function onClickAssistance(event:Event):void
+            {
+
+            	if (  shelf.currentPosition == 1 )
+            	{
+            	var urlRequest:URLRequest = new URLRequest('http://eassistance.cityofencinitas.org/servicerequest.aspx?site=zoning&start=extent&xmin=' 
+            		+ xmin.toString() + '&ymin=' + ymin.toString() + '&xmax=' + xmax.toString() + '&ymax='+ ymax.toString());
+            	navigateToURL(urlRequest, "_blank");
+            	}
+            }
+        ]]>
+    </Script>
+    	
+	<ArrayCollection id="dataSet">	
+		<String>img/JustASpacerForClarity.jpg</String>
+		<Canvas id="Assist"  width="400" height="340"  verticalScrollPolicy="off">
+			<HBox>
+				<Image id="Assistance" source="img/EAssistance.jpg" maintainAspectRatio="true" click="onClickAssistance(event)" />
+			</HBox>
+		</Canvas>
+		
+		<Canvas id="Find"  width="400" height="340"  verticalScrollPolicy="off">
+			<HBox>
+				<Image id="Finder" source="img/Finder.jpg" maintainAspectRatio="true" click="onClickFinder(event)" />
+			</HBox>
+		</Canvas>		
+		<String>img/drawingtracker.jpg</String>			
+		<Canvas id="Zone"  backgroundColor="#CBC8C8" width="400" height="340"  verticalScrollPolicy="off">
+			<HBox>
+				<Image id="zoning" source="img/zoning.jpg" maintainAspectRatio="true"  click="onClickZoning(event)" />
+			</HBox>
+		 </Canvas>
+		<String>img/JustASpacerForClarity.jpg</String>
+									
+	</ArrayCollection>		
+
+<Canvas width="100%" height="100%">
+	
+	<Label id="Lble1" text="City GIS Services" fontSize="40" fontThickness="10"  fontStyle="italic" color="#FFFFFF" x="10" y="10"/>	
+	
+	<VBox horizontalCenter="0" verticalCenter="0"
+		borderColor="#FFFFFF"  >	 	
+
+	<EncComponents:DisplayShelf id="shelf" 
+		borderThickness="10"  borderColor="#FFFFFF" dataProvider="{dataSet}"  enableHistory="false" />
+
+	</VBox>
+
+	<VBox horizontalCenter="0" bottom="10" left="10"
+		horizontalAlign="center" verticalAlign="middle" >
+		
+		<HBox visible="false">
+			<Label text="pop:" />
+			<HSlider liveDragging="true" id="pop" minimum="0" value=".1" maximum="1" snapInterval=".01" width="500" />
+		</HBox>
+		
+		<HBox visible="false">
+			<Label text="Angle:" />
+			<HSlider liveDragging="true" id="angle" minimum="5" value="11.10" maximum="90" snapInterval=".1" width="400" />
+		</HBox>
+
+		<HBox>
+			<Label text="" fontSize="20" />
+			<HSlider height="50"  liveDragging="true" id="sel" minimum="0" value="2" maximum="{shelf.dataProvider.length-1}" snapInterval="1" width="500" />
+		</HBox>
+			
+		
+	</VBox>
+
+</Canvas>
+</Canvas>

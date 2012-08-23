@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<!--=============================================================================
+*Modify to decide what tool are visible when the toolbar is added a project 
+*
+* 
+* =============================================================================-->
+<configuration>
+	<Tools>
+		<Tool>
+			<Name>Elevation</Name>
+			<Visible>True</Visible>
+		</Tool>
+		<Tool>
+			<Name>Profile</Name>
+			<Visible>True</Visible>
+		</Tool>
+		<Tool>
+			<Name>Drawing</Name>
+			<Visible>True</Visible>
+		</Tool>
+		<Tool>
+			<Name>Google</Name>
+			<Visible>True</Visible>
+		</Tool>
+		<Tool>
+			<Name>Project</Name>
+			<Visible>True</Visible>
+		</Tool>		
+	</Tools>
+</configuration>

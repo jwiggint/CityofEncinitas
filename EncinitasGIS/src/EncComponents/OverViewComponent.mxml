@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<s:Group		   xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:esri="http://www.esri.com/2008/ags"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:EncComponents="EncComponents.*" 
+				   right ="{parentApplication.right + 50}"
+				   initialize="onInit()" alpha.Default=".75" alpha.ShowOverview="1"
+				   rollOutEffect="{fade10}"
+				   rollOverEffect="{fade01}">	
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Map;
+			
+			[Bindable]
+			private var _Map:Map;
+			
+			public function get parentMap():Map
+			{
+				return _Map;
+			}
+			
+			public function set parentMap(parentmap:Map):void
+			{
+				_Map=parentmap;
+				
+			}
+			
+			private function onInit():void
+			{
+				/* 			var allLayers:Array = dynamic1.layerInfos;
+				var addInfo:com.esri.ags.layers.LayerInfo
+				for each(var i:com.esri.ags.layers.LayerInfo in allLayers)
+				{
+				if (i.name == "CAB")
+				{
+				
+				}
+				} */
+			}
+			private function onClick(event:MouseEvent):void
+			{
+				if (currentState =="Default") 
+				{
+					
+						setCurrentState("ShowOverview")
+				}
+				else
+				{
+					setCurrentState("Default")
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Fade id="fade01"
+				alphaFrom="0.75"
+				alphaTo="1.0"
+				duration="500"/>
+		<s:Fade id="fade10"
+				alphaFrom="1.0"
+				alphaTo="0.75"
+				duration="500"/>
+		
+	</fx:Declarations>
+	
+	
+	<s:states>
+		<s:State name="Default"/>			
+		<s:State name="ShowOverview"/>
+	</s:states>
+	
+	
+	<s:Rect width.Default="20" width.ShowOverview="317" height.Default="120" height.ShowOverview="216" radiusX="10" radiusY="10"   >
+		<s:stroke>
+			<s:SolidColorStroke color="0x000000" weight="1.2"/>
+		</s:stroke>
+		<s:fill  >
+			<s:SolidColor color="#BAC19F"/>
+		</s:fill>
+	</s:Rect>
+	<s:HGroup width="100%" height="100%" paddingBottom="1" paddingTop="3" paddingLeft="3" paddingRight="1"> 
+		
+	
+	<mx:HBox includeIn="Default, ShowOverview" id="hboxMain" horizontalGap="0" borderStyle="none" 
+			 borderColor="#184666" 
+			 cornerRadius="9" 
+			 verticalGap="0" 
+			 width="15" width.ShowOverview="314" 
+			 height="110" height.ShowOverview="214"
+			 horizontalAlign="left" verticalAlign="top" verticalScrollPolicy="off" x="1.5" y="3" 
+			 backgroundColor="#FDFDFB" backgroundColor.ShowOverview="#BAC19F" 
+
+			 >
+		<mx:LinkButton icon="@Embed(source='/assets/icons/OverView_small.JPG')" 
+					   icon.ShowOverview="@Embed(source='/assets/icons/OverViewComponent.JPG')"
+					   id="lnkState1" 
+					   click="onClick(event)"
+					   enabled="true" 
+					   width="15" 
+					   width.ShowOverview="30"
+					   height.ShowOverview="213"
+					   height="110" 
+					   alpha="1.0" 
+					   toolTip="&quot;Show Overview Map&quot;" 
+					   toolTip.ShowOverview="Hide Map"
+					   cornerRadius="20"
+					   includeIn="Default, ShowOverview">			
+		</mx:LinkButton>
+
+		<EncComponents:OverviewMap  mainMap="{_Map}" visible="true" id="overviewmap1" width="282" height="212" overviewMode="static" level="1">
+			<esri:ArcGISTiledMapServiceLayer  url="http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/unsecured/overview/MapServer"/>
+		</EncComponents:OverviewMap>
+
+		
+	</mx:HBox>
+	</s:HGroup>
+	
+	
+	
+</s:Group>

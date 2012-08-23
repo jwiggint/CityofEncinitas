@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 currentState="Minimized" 
+		 xmlns:EncComponents="EncComponents.*" 
+		 initialize="group2_initializeHandler(event)" 
+		 width="45"
+		 opaqueBackground="0xC3CBC7">
+
+	<s:layout>
+		<s:VerticalLayout verticalAlign="bottom" gap.Minimized="0" horizontalAlign.Minimized="center" horizontalAlign.Expanded="center" gap.Expanded="5" />
+	</s:layout>
+	<!--This is ther main toolbar for Encinitas tools. It will Handle adding various widgets to the map when
+	a user clicks on the toolbar-->
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.Map;
+			import com.esri.ags.SpatialReference;
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.events.ImageServiceIdentifyEvent;
+			import com.esri.ags.events.MapMouseEvent;
+			import com.esri.ags.geometry.Extent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.layers.supportClasses.AllDetails;
+			import com.esri.ags.skins.AttributeInspectorPreviousButtonSkin;
+			import com.esri.ags.symbols.CompositeSymbol;
+			import com.esri.ags.symbols.SimpleMarkerSymbol;
+			import com.esri.ags.symbols.TextSymbol;
+			import com.esri.ags.tasks.GeometryService;
+			import com.esri.ags.tasks.ImageServiceIdentifyTask;
+			import com.esri.ags.tasks.supportClasses.ImageServiceIdentifyParameters;
+			import com.esri.ags.tasks.supportClasses.ImageServiceIdentifyResult;
+			import com.esri.ags.utils.WebMercatorUtil;
+			
+			import mx.containers.Canvas;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.rpc.http.HTTPService;
+			import mx.skins.spark.AccordionHeaderSkin;
+			
+			import org.osmf.utils.URL;
+			
+			import skins.IconButtonGetElevationSkin;
+			import skins.IconButtonSkin;
+			import skins.ProjectButtonSkin;
+			
+			import spark.components.HGroup;
+			
+			[Bindable]
+			private var _map:Map;
+			private var _parentCanvas:Object;
+			private var frLat:String;
+			private var frLong:String;
+			private var _toolGraphicsLayer:GraphicsLayer;
+			
+			[Bindable]
+			private var _geometryService:GeometryService;
+			
+			[Bindable]
+			private var _parentSP:SlidingPanel;
+			
+			public function set map(value:Map):void
+			{
+				_map = value;
+			}
+			public function set parentContainer(value:Object):void
+			{
+				_parentCanvas=value
+			}
+			
+			public function get geometryService():GeometryService
+			{
+				return _geometryService;
+			}
+			
+			public function set geometryServiceap(value:GeometryService):void
+			{
+				_geometryService = value;
+				
+			}
+
+			
+			public function set slidingPanel(value:SlidingPanel):void
+			{
+				_parentSP = value;
+			}
+			protected function btnShowtoolbar_clickHandler(event:MouseEvent):void
+			{
+				if (currentState == "Expanded")
+				{
+					currentState = "Minimized"
+				}
+				else
+				{
+					currentState = "Expanded"
+				}
+			}
+
+			//Add a drawing widget to the map
+			protected function btnDraw_clickHandler(event:MouseEvent):void
+			{
+				var httpS:HTTPService = new HTTPService("http://gisweb:9231/siteprofiler/configs/SSRSReports.xml");
+				httpS.resultFormat = "e4x";
+				httpS.addEventListener(ResultEvent.RESULT,onHTTPResultDraw);
+				httpS.addEventListener(FaultEvent.FAULT,onHTTPResultFault);
+				httpS.url="http://gisweb:9231/siteprofiler/configs/DrawWidget.xml"
+				httpS.useProxy = false;
+				httpS.send();
+				
+				function onHTTPResultDraw(event:ResultEvent):void
+				{
+					if(_toolGraphicsLayer)
+					{
+						_toolGraphicsLayer.clear();
+					}
+					
+					if (!dp)
+					{					
+						_map.panEnabled=false;
+						_map.openHandCursorVisible=false;
+						var dp:DrawingPanel2  = new DrawingPanel2;
+						//dp.targetMap = map;
+						dp.map = _map;
+						dp.Cinfig = event.result as XML;
+						dp.title = "Drawing Tools";
+						dp.allowDrag = true;
+						dp.allowClose = true;
+						dp.allowResize = true;
+						dp.sizeRatio
+						dp.allowMinimize = true;
+						if (_parentSP.currentState=="Open")
+						{
+							var offset:Number = 45
+						}
+						if ( _parentCanvas is Canvas)
+						{
+							_parentCanvas.addChild(dp);
+						}
+						else if ( _parentCanvas is Group)
+						{
+							_parentCanvas.addElement(dp);
+							
+						}
+						
+					}
+				}
+
+			}
+
+
+
+			protected function group1_rollOutHandler(event:MouseEvent):void
+			{
+				if (currentState == "Expanded")
+				{
+					currentState = "Minimized"
+				}
+			}
+
+
+			protected function btnGoogle_clickHandler(event:MouseEvent):void
+			{
+				if(_toolGraphicsLayer)
+				{
+					_toolGraphicsLayer.clear();
+				}
+				_map.addEventListener(MapMouseEvent.MAP_CLICK, onMapClicked);
+					
+
+				//var gl:GraphicsLayer = parentDocument.getChildByName("graphicsLayer") as GraphicsLayer;
+
+			}
+			public function displayForm(lat:String,long:String):void
+			{
+				var myURL:String;
+				myURL = "http://data.mapchannels.com/mm/dual2/map.htm?x=" + long + "&y=" + lat + "&z=16&gm=0&ve=3&gc=0&xb=" + long + "&yb=" + lat + "&zb=1&db=0&bar=0&mw=1&sv=1&svb=0&mi=0&mg=1&mv=1%20marginwidth='0'%20marginheight='0'%20frameborder='0'%20scrolling='no'";
+				var pop1:WebForm = WebForm(
+					PopUpManager.createPopUp(this, WebForm, true));
+				pop1.title = myURL;
+				pop1.showCloseButton=true;
+			}
+			
+			private function onMapClicked(event:MapMouseEvent):void
+			{
+				const frmapPoint:MapPoint = _map.toMapFromStage(event.stageX, event.stageY);
+				var latlong:MapPoint;
+				var wkidString:String = frmapPoint.spatialReference.wkid.toString();
+				
+				if ( wkidString == "102100")
+				{
+					latlong = WebMercatorUtil.webMercatorToGeographic(frmapPoint) as MapPoint;
+					frLat = latlong.y.toFixed(6);
+					frLong = latlong.x.toFixed(6);
+					displayForm(frLat, frLong);
+				}
+				else if ( wkidString == "3857")
+				{
+					latlong = WebMercatorUtil.webMercatorToGeographic(frmapPoint) as MapPoint;
+					frLat = latlong.y.toFixed(6);
+					frLong = latlong.x.toFixed(6);
+					displayForm(frLat, frLong);
+				}
+				else if ( wkidString == "4326")
+				{
+					latlong = _map.toMapFromStage(event.stageX, event.stageY);
+					frLat = latlong.y.toFixed(6);
+					frLong = latlong.x.toFixed(6);
+					displayForm(frLat, frLong);
+				}
+				
+				var graphic:Graphic = new Graphic();	
+				var mapPoint2:MapPoint = frmapPoint;
+				mapPoint2.spatialReference = _map.spatialReference;				
+				graphic.geometry = mapPoint2;
+				
+				//if it doesn't already exist add the graphics layer for the toolbar
+				if (!_toolGraphicsLayer)
+				{
+					addtoolbarGraphicsLayer();
+				}
+				//var gl:GraphicsLayer = new GraphicsLayer;
+				//gl.id="toolbarGraphicsLayer";
+				
+				_toolGraphicsLayer.clear();				
+				_toolGraphicsLayer.add(graphic);
+				//_map.addLayer(_toolGraphicsLayer);
+				_map.removeEventListener(MapMouseEvent.MAP_CLICK,onMapClicked);
+			}
+
+			protected function btnProject_clickHandler(event:MouseEvent):void
+			{
+				var httpS:HTTPService = new HTTPService("http://gisweb:9231/siteprofiler/configs/CoordinateMenuWidget.xml");
+				httpS.resultFormat = "e4x";
+				httpS.addEventListener(ResultEvent.RESULT,onHTTPResultCoord);
+				httpS.addEventListener(FaultEvent.FAULT,onHTTPResultFault);
+				httpS.url="http://gisweb:9231/siteprofiler/configs/CoordinateMenuWidget.xml"
+				httpS.useProxy = false;
+				httpS.send();
+				
+				function onHTTPResultCoord(event:ResultEvent):void
+				{
+					if(_toolGraphicsLayer)
+					{
+						_toolGraphicsLayer.clear();
+					}
+					var coodMenuWidget:CoordinateMenuWidget = new CoordinateMenuWidget;
+					coodMenuWidget.allowClose=true;
+					coodMenuWidget.allowDrag=true;
+					coodMenuWidget.allowResize=true;
+					coodMenuWidget.map = _map;
+					coodMenuWidget.Cinfig = event.result as XML;
+					
+					if ( _parentCanvas is Canvas)
+					{
+						_parentCanvas.addChild(coodMenuWidget);
+					}
+					else if ( _parentCanvas is Group)
+					{
+						_parentCanvas.addElement(coodMenuWidget);
+						
+					}
+					//var goToCoordinates:GoToCoordinateDialog = new GoToCoordinateDialog();;
+					//goToCoordinates.show(coodMenuWidget);
+				}
+	
+			}
+
+
+			protected function btnGetElevation_clickHandler(event:MouseEvent):void
+			{
+//				navToolbar.deactivate();
+//				map.panEnabled=true;
+//				map.openHandCursorVisible=false;
+				
+				_map.addEventListener(MapMouseEvent.MAP_CLICK, onGetElevationMapClicked);
+
+			}
+			
+			private function onGetElevationMapClicked(event:MapMouseEvent):void
+			{
+				_map.removeEventListener(MapMouseEvent.MAP_CLICK,onGetElevationMapClicked);
+				var imageservicequery:ImageServiceIdentifyTask  = new ImageServiceIdentifyTask("http://gisdev/ArcGIS/rest/services/Encinitas_DEM/ImageServer");
+				imageservicequery.showBusyCursor = true;
+				
+				var imageserviceparam:ImageServiceIdentifyParameters = new ImageServiceIdentifyParameters;
+				imageserviceparam.geometry = event.mapPoint;
+				imageservicequery.execute(imageserviceparam,new AsyncResponder(onIdentifyDEM,onIdentifyDEMFault));
+				
+			}
+			
+			private function onIdentifyDEM(event:ImageServiceIdentifyResult, identifyResults:Array = null):void
+			{
+				
+				if (!_toolGraphicsLayer)
+				{
+					addtoolbarGraphicsLayer();
+				}
+				_toolGraphicsLayer.clear();
+				var l:Number = new Number(event.value);
+				var attributes:Object = "Approx Elevation: " + l.toFixed(0) + "'";
+				var geometry1:GeometryService = new GeometryService("http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/Geometry/GeometryServer")
+				geometry1.concurrency = "last"
+				geometry1.addEventListener(GeometryServiceEvent.PROJECT_COMPLETE, elevationProjectComplete);
+				var outSR:SpatialReference = new SpatialReference(102100);
+				var returnGeom:Geometry;
+				geometry1.project([ event.location as Geometry],outSR); 
+				
+				function elevationProjectComplete(event:GeometryServiceEvent):void
+				{
+					geometry1.removeEventListener(GeometryServiceEvent.PROJECT_COMPLETE, elevationProjectComplete);
+					var returnGeom:Geometry
+					for each (var geometry:MapPoint in event.result)
+					{
+						returnGeom = geometry;
+						
+					}
+					var Elevation:Object = {Pixel:attributes};
+					var ElevationSymbol:CompositeSymbol = new CompositeSymbol;
+					var simpleMarkerSymbol:SimpleMarkerSymbol = new SimpleMarkerSymbol("circle",14,0);
+					var textSymbol:TextSymbol=new TextSymbol(null,null,0,true,0,true,0xfffaf0,"start",0,0,10,new TextFormat(null,15,null,"bold"),"Pixel");
+					var simpleMarkerSymbol2:SimpleMarkerSymbol = new SimpleMarkerSymbol("circle",10,0xfffaf0);
+					ElevationSymbol.symbols=[simpleMarkerSymbol,textSymbol,simpleMarkerSymbol2];
+					var myGraphicMarker:Graphic = new Graphic(returnGeom,ElevationSymbol,Elevation);
+					//myGraphicMarker.attributes = Pixel: attributes;
+					_toolGraphicsLayer.add(myGraphicMarker);
+				}
+
+			}
+			private function onIdentifyDEMFault(event:FaultEvent, identifyResults:Array = null):void
+			{
+				Alert.show(event.toString(),"Error Getting the Elevation")
+			}
+			
+			private function addtoolbarGraphicsLayer():void
+			{
+				_toolGraphicsLayer = new GraphicsLayer;
+				_toolGraphicsLayer.id = "toolbarGraphicsLayer"
+				_map.addLayer(_toolGraphicsLayer);
+			}
+
+
+			protected function group2_initializeHandler(event:FlexEvent):void
+			{
+
+//				var toolsList:XMLList = TooLBarConfig.Tools;
+//				
+//				for (var i:int=0; toolsList.length(); i++)
+//				{
+//					switch (toolsList.Tool)
+//					{
+//						case "Elevation":
+//						{
+//							if (toolsList[i].Tool.Status == "False")
+//							{
+//								btnGetElevation.visible = false;
+//							}
+//						}
+//						
+//					}
+//				}
+			}
+
+
+			protected function btnGeoDocs_clickHandler(event:MouseEvent):void
+			{
+				//var curextent:Extent = new Extent(map.extent.xmin,map.extent.ymin,map.extent.xmax,map.extent.ymax,map.spatialReference);
+				//var geodocsURL:URL = new URL("http://gisweb:9231/GeoDocViewer_2.4/index.html")
+				navigateToURL(new URLRequest( 'http://gisweb:9231/GeoDocViewer/index.html?extent=' + _map.extent.xmin + ',' + _map.extent.ymin + ',' + _map.extent.xmax + ',' + _map.extent.ymax ),"quote");
+			}
+
+
+			protected function btnSSRS_clickHandler(event:MouseEvent):void
+			{
+				var httpS:HTTPService = new HTTPService("http://gisweb:9231/siteprofiler/configs/SSRSReports.xml");
+				httpS.resultFormat = "e4x";
+				httpS.addEventListener(ResultEvent.RESULT,onHTTPResult);
+				httpS.addEventListener(FaultEvent.FAULT,onHTTPResultFault);
+				httpS.url="http://gisweb:9231/siteprofiler/configs/SSRSReports.xml"
+				httpS.useProxy = false;
+				httpS.send();
+			}
+			
+			private function onHTTPResult(event:ResultEvent):void
+			{
+				var httpService:HTTPService = event.target as HTTPService;
+				//don't forget to stop listening. we don't want memory leaks!
+				//httpService.removeEventListener(ResultEvent.RESULT, onHTTPResult);
+				
+				var ssrs:SSRSReports = new SSRSReports;
+				ssrs.allowClose=true;
+				ssrs.allowDrag=true;
+				ssrs.allowResize=true;
+				ssrs.allowMinimize=true;
+				ssrs.map = _map;
+				
+				ssrs.Cinfig=event.result as XML;
+				
+				if ( _parentCanvas is Canvas)
+				{
+					_parentCanvas.addChild(ssrs);
+				}
+				else if ( _parentCanvas is Group)
+				{
+					_parentCanvas.addElement(ssrs);
+					
+				}
+			}
+			private function onHTTPResultFault(evt:FaultEvent):void {
+				var title:String = evt.type + " (" + evt.fault.faultCode + ")";
+				var text:String = evt.fault.faultString;
+				Alert.show(text, title);
+			}
+
+			protected function btnTOC_clickHandler(event:MouseEvent):void
+			{
+				
+				var httpS:HTTPService = new HTTPService("http://gisweb:9231/siteprofiler/configs/TOCWidget.xml");
+				httpS.resultFormat = "e4x";
+				httpS.addEventListener(ResultEvent.RESULT,onHTTPResultTOC);
+				httpS.addEventListener(FaultEvent.FAULT,onHTTPResultFault);
+				httpS.url="http://gisweb:9231/siteprofiler/configs/TOCWidget.xml"
+				httpS.useProxy = false;
+				httpS.send();
+				
+				function onHTTPResultTOC(event:ResultEvent):void
+				{
+					var toc:TOCWidget = new TOCWidget;
+					toc.map = _map;
+					toc.allowClose = true;
+					toc.title = "Map Legend";
+					toc.width=260;
+					toc.allowDrag=true;
+					toc.allowResize=true;
+					toc.height=250;
+					toc.Cinfig= event.result as XML;
+					if ( _parentCanvas is Canvas)
+					{
+						_parentCanvas.addChild(toc);
+					}
+					else if ( _parentCanvas is Group)
+					{
+						_parentCanvas.addElement(toc);
+						
+					}
+					
+					/* 				<EncComponents:TOCWidget id="myToc"  map="{map}" allowClose="true"
+					allowResize="true"
+					allowMinimize="true"
+					allowDrag="true"
+					title="Legend"
+					width="260"
+					height = "250" />*/
+				}
+				
+				
+			}
+
+		]]>
+	</fx:Script>
+
+	
+	<s:states>
+		<s:State name="Minimized"/>
+		<s:State name="Expanded"/>
+	</s:states>
+	
+	<s:Rect height.Expanded="{this.height}">
+		<s:fill>
+			<s:LinearGradient>
+				<s:GradientEntry color="0xC5C551" ratio="0.00" alpha="0.5"/>
+				<s:GradientEntry color="0xFEFE24" ratio="0.33" alpha="0.5"/>
+				<s:GradientEntry color="0xECEC21" ratio="0.66" alpha="0.5"/>
+			</s:LinearGradient>
+		</s:fill>
+	</s:Rect>
+
+	<s:VGroup verticalAlign="bottom" rollOut="group1_rollOutHandler(event)" horizontalAlign="contentJustify" >
+		<s:Button id="btnTOC" label="Open the map TOC"
+				  includeIn="Expanded"
+				  height="32"
+				  width="32"
+				  skinClass="{skins.IconButtonTOCSkin} "
+				  click="btnTOC_clickHandler(event)"/>
+		
+		<s:Button id="btnSSRS" label="Open a list of SSRS reports"
+				  includeIn="Expanded"
+				  height="32"
+				  width="32"
+				  skinClass="{skins.SSRSSkin}"
+				  
+				  click="btnSSRS_clickHandler(event)"/>
+		
+		<s:Button id="btnGeoDocs" label="Open up the GeoDocs Application" 
+				  includeIn="Expanded"
+				  height="32"
+				  width="32"
+				  skinClass="{skins.IconButtonGeoDocsSkin}"
+				  click="btnGeoDocs_clickHandler(event)" visible="true"/>
+			
+		<EncComponents:EncElevationComponent2 id="ProfileTool" includeInLayout="true"
+											  includeIn="Expanded" 
+											  width="32" height="32"
+											  map="{_map}"
+											  geometryServiceap="{_geometryService}"
+											  Cinfig="{ElevationConfig}"/>
+			
+
+		<s:Button id="btnGetElevation"
+				  label="Click on the map to get the estimated Elevation at that point"
+				  height="32"
+				  width="32"
+				  includeIn="Expanded"
+				  skinClass="{skins.IconButtonGetElevationSkin}"
+				  click="btnGetElevation_clickHandler(event)">
+			
+		</s:Button>
+		
+		
+		<s:Button id="btnProject"
+				  label="Zoom to Coordinate or right click on the map to copy coordinates to the clipboard"
+				  height="32"
+				  width="32"
+				  includeIn="Expanded"
+				  skinClass="{skins.ProjectButtonSkin}"
+				  click="btnProject_clickHandler(event)">
+			
+		</s:Button>
+
+		<s:Button id="btnDraw"
+				  label="Drawing &amp; Measuring Tools"
+				  height="32"
+				  width="32"
+				  skinClass="skins.IconButtonDrawingTools" includeIn="Expanded"
+				  click="btnDraw_clickHandler(event)">
+		</s:Button>
+		<s:Button id="btnGoogle"
+				  label="Street View"
+				  height="32"
+				  width="32"
+				  includeIn="Expanded"
+				  skinClass="skins.btnStreetviewSkin"
+				  click="btnGoogle_clickHandler(event)" >
+			
+		</s:Button>
+		<s:Button id="btnShowtoolbar" 
+				  label="Show Tools"
+				  height="32" 
+				  width="32"
+				  skinClass="skins.ToolBarSkin"
+				  click="btnShowtoolbar_clickHandler(event)"
+				  toolTip="Show tools" >
+		</s:Button>
+	</s:VGroup>
+
+	<fx:Declarations>
+		<fx:XML source="http://gisweb:9231/siteprofiler/configs/DrawWidget.xml" format="e4x" id="DrawConfig" xmlns=""/>
+		<fx:XML source="http://gisweb:9231/siteprofiler/configs/CoordinateWidget.xml" format="e4x" id="CoordConfig" xmlns="" />
+		<fx:XML source="http://gisweb:9231/siteprofiler/configs/ElevationProfileWidget.xml" format="e4x" id="ElevationConfig" xmlns=""/>
+		<fx:XML source="http://gisweb:9231/siteprofiler/configs/TooLBarConfig.xml" format="e4x" id="TooLBarConfig" xmlns=""/>
+		
+	</fx:Declarations>
+
+</s:Group>

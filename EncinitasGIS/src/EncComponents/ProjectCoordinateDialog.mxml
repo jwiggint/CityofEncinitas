@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   width="550" height="206"  styleName="modal"
+			   creationComplete="creationCompleteHandler(event)" 
+			   title="Projected Coordinate Systems">
+	<s:layout>
+		<s:VerticalLayout paddingBottom="10" paddingTop="10" paddingLeft="10" paddingRight="10"/>
+	</s:layout>
+	
+	<fx:Declarations>
+		
+		<mx:Glow id="glow" duration="1000" blurXTo="30" blurYTo="30" color="0xFF0000"/>
+		
+	</fx:Declarations>
+	
+<fx:Style>
+	@namespace s "library://ns.adobe.com/flex/spark";
+	@namespace mx "library://ns.adobe.com/flex/mx";
+	
+	.modal
+	{
+		modal-transparency-duration: 0;
+	}
+
+	
+</fx:Style>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.geometry.MapPoint;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+
+			
+			[Bindable]
+			public var coordinateSystems:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var widget:CoordinateMenuWidget;
+			[Bindable]
+			public var projectedPoint:MapPoint;
+			
+			private var projector:Projector;
+			
+			public function show(_widget:CoordinateMenuWidget):void
+			{
+				PopUpManager.addPopUp(this,FlexGlobals.topLevelApplication as DisplayObject,true);
+				PopUpManager.centerPopUp(this);
+				this.widget = _widget;
+				this.coordinateSystems = _widget.coordinateSystems;
+				
+				//get lay long. (wgs94)
+				projector = new Projector(widget.geometryServiceURL);
+				projector.projectPoint(this.widget.mapPoint, 4326,function(event:GeometryServiceEvent):void{
+					var mPoint:MapPoint = event.result[0] as MapPoint;
+					txtLat.text = mPoint.y.toFixed(0).toString();
+					txtLong.text = mPoint.x.toFixed(0).toString();
+				});
+			}
+			
+			public function close():void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				this.progressBar.visible = false;
+				this.btnCopyAndClose.enabled = false;
+				this.addEventListener(CloseEvent.CLOSE, onClose)
+			}
+			
+			private function onClose(event:CloseEvent):void
+			{
+				this.close();
+			}
+
+			protected function btnProject_clickHandler(event:MouseEvent):void
+			{
+				this.progressBar.visible = true;
+				this.btnCopyAndClose.enabled = false;
+				var coordinateSystem:CoordinateSystem = ddlCoordinateSystems.selectedItem as CoordinateSystem;
+				if (coordinateSystem != null)
+				{
+					var projector:Projector = new Projector(widget.geometryServiceURL);
+					projector.projectPoint(widget.mapPoint,coordinateSystem.wkid, onProjectComplete);
+				}
+				else
+				{
+					Alert.show("Invalid coordinate selection");
+					progressBar.visible = false;
+				}
+			}
+			
+			private function onProjectComplete(event:GeometryServiceEvent):void
+			{
+				this.progressBar.visible = false;
+				this.btnCopyAndClose.enabled = true;
+				this.projectedPoint = event.result[0] as MapPoint;
+				
+				var coordinateSystem:CoordinateSystem = ddlCoordinateSystems.selectedItem as CoordinateSystem;
+				this.txtProjectX.text = this.projectedPoint.x.toFixed(coordinateSystem.decimals).toString();
+				this.txtProjectY.text = this.projectedPoint.y.toFixed(coordinateSystem.decimals).toString();
+			}
+			private function copyCoordinate(mPoint:MapPoint):void
+			{
+				if (mPoint != null)
+				{
+					var copyString:String = this.widget.format(mPoint);
+					this.widget.showGraphicAsCopied(widget.mapPoint);
+					System.setClipboard(copyString);
+					
+				}
+				else
+				{
+					Alert.show("No data to copy.\nPlease project your location.","Copy Error");
+				}
+			}
+			
+			private function copy():void
+			{
+				glow.play([txtProjectX, txtProjectY, txtProjected]);
+				this.copyCoordinate(this.projectedPoint);
+			}
+			
+			private function copyMapCoordinates():void
+			{
+				glow.play([txtMapX, txtMapY, txtMap]);
+				this.copyCoordinate(this.widget.mapPoint);
+			}
+			
+			private function copyWGSCoordinates():void
+			{
+			
+				glow.play([txtLat, txtLong, txtWGS]);
+				var x:Number = Number(txtLong.text);
+				var y:Number = Number(txtLat.text);
+				this.copyCoordinate(new MapPoint(x,y));
+			}
+			
+			private function copyAndClose():void
+			{
+				this.copy();
+				this.close();
+			}
+			
+
+		]]>
+	</fx:Script>
+	<s:Label text="Please select your desired coordinate system from the list below."/>
+	<s:HGroup width="100%" verticalAlign="middle">
+		<s:Label text="Coordinate System:" width="125"/>
+		<s:DropDownList contentBackgroundAlpha="1" id="ddlCoordinateSystems" width="100%" dataProvider="{this.coordinateSystems}" labelField="name" prompt="-- Select Coordinate System --"></s:DropDownList>
+	</s:HGroup>
+	<s:HGroup width="100%" verticalAlign="middle" height="20">
+		<mx:Image toolTip="Copy Coordinates" buttonMode="true" useHandCursor="true" click="copy()" scaleContent="false" width="16" height="16" source="@Embed(source='../assets/icons/copy.png')"/>
+		<s:Label text="Projected:" width="109" id="txtProjected"/>
+		<mx:Label text="X:" width="20" fontWeight="bold"/>
+		<mx:Label id="txtProjectX"  selectable="true" width="150" />
+		<mx:Label text="Y:" width="20" fontWeight="bold"/>
+		<mx:Label id="txtProjectY" selectable="true" width="150" />
+	</s:HGroup>
+	<s:HGroup width="100%">
+		<s:HGroup width="100%" horizontalAlign="right">
+			
+			<mx:ProgressBar labelPlacement="center" indeterminate="true" label="Projecting..." width="125" id="progressBar" height="100%"/>
+			<mx:Button label="Project Coordinates" id="btnProject" click="btnProject_clickHandler(event)" icon="@Embed(source='../assets/icons/project.png')" width="100%"/>
+			<mx:Button label="Copy &amp; Close" id="btnCopyAndClose" click="copyAndClose();" icon="@Embed(source='../assets/icons/copy.png')" width="153" x="375"/>
+		</s:HGroup>
+	</s:HGroup>
+	
+	<s:HGroup width="100%" verticalAlign="middle" height="20">
+		<mx:Image toolTip="Copy Coordinates" buttonMode="true" useHandCursor="true" click="copyMapCoordinates()" scaleContent="false" width="16" height="16" source="@Embed(source='../assets/icons/copy.png')"/>
+		<s:Label text="Map:" width="109" id="txtMap"/>
+		<mx:Label text="X:" width="20" fontWeight="bold"/>
+		<mx:Label text="{this.widget.mapPoint.x.toFixed(4).toString()}" selectable="true" width="150"  id="txtMapX"/>
+		<mx:Label text="Y:" width="20" fontWeight="bold"/>
+		<mx:Label text="{this.widget.mapPoint.y.toFixed(4).toString()}" selectable="true" width="150"  id="txtMapY"/>
+	</s:HGroup>
+	<s:HGroup width="100%" verticalAlign="middle" height="20">
+		<mx:Image toolTip="Copy Coordinates" buttonMode="true" useHandCursor="true" click="copyWGSCoordinates()" scaleContent="false" width="16" height="16" source="@Embed(source='../assets/icons/copy.png')"/>
+		<s:Label text="WGS 1984:" width="109" id="txtWGS"/>
+		<mx:Label text="Long:" fontWeight="bold"/>
+		<mx:Label selectable="true" width="132"  id="txtLong"/>
+		<mx:Label text="Lat:" fontWeight="bold"/>
+		<mx:Label selectable="true" width="150"  id="txtLat"/>
+	</s:HGroup>
+	
+	 
+</s:TitleWindow>

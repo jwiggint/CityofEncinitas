@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EncComponents:SuperPanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" 
+						  xmlns:EncComponents="EncComponents.*"
+						  xmlns:esri="http://www.esri.com/2008/ags"
+						  layout="vertical" width="300" height="90"
+						  minWidth="200" minHeight="100"
+						  horizontalAlign="left"
+						  verticalAlign="middle"
+						  moveEffect="Move"
+						  creationComplete="superpanel1_creationCompleteHandler(event)"
+						  close="superpanel1_closeHandler(event)"
+						  
+						  >
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.TimeExtent;
+			import com.esri.ags.layers.ArcGISDynamicMapServiceLayer;
+			import com.esri.ags.layers.DynamicMapServiceLayer;
+			import com.esri.ags.layers.Layer;
+			import com.esri.ags.layers.supportClasses.AllDetails;
+			import com.esri.ags.layers.supportClasses.LayerInfo;
+			
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			
+			[Bindable]
+			private var _timeExtent:TimeExtent;
+			
+			[Bindable]
+			private var _timeLayer:ArcGISDynamicMapServiceLayer;
+			
+			public function set timeExtent(value:TimeExtent):void
+			{
+				_timeExtent = value;
+
+			}
+			
+			public function set timeLayer(value:ArcGISDynamicMapServiceLayer):void
+			{
+				_timeLayer = value;
+				
+			}
+
+			protected function superpanel1_creationCompleteHandler(event:FlexEvent):void
+			{
+				parcelTimeSlider.createTimeStopsByCount(_timeExtent,12);
+				parcelTimeSlider.thumbMovingRate=2000;
+
+				this.map.timeSlider = parcelTimeSlider;
+				_timeLayer.visible = true;
+			}
+
+
+			protected function superpanel1_closeHandler(event:CloseEvent):void
+			{
+				_timeLayer.visible = false;
+				parent.removeChild(this);
+			}
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<mx:DateFormatter id="myDateFormatter" formatString="MMM. D, YYYY"/>
+
+	</fx:Declarations>
+	
+	<esri:TimeSlider id="parcelTimeSlider" skinClass="com.esri.ags.skins.TimeSliderSkin" 
+					 toolTip="{myDateFormatter.format(parcelTimeSlider.timeExtent.endTime)}"
+					 />
+	<s:Label text="Showing Parcels for {myDateFormatter.format(parcelTimeSlider.timeExtent.endTime)}" verticalAlign="top" textAlign="left"/>
+
+</EncComponents:SuperPanel>

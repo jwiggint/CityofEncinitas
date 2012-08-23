@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EncComponents:SuperPanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" 
+						  xmlns:EncComponents="EncComponents.*"
+						  xmlns:esri="http://www.esri.com/2008/ags"
+						  layout="absolute" width="400" height="300"
+						  minWidth="200" minHeight="100"
+						  horizontalAlign="center"
+						  verticalAlign="middle"
+						  moveEffect="Move"
+						  close="superpanel1_closeHandler(event)" 
+						  creationComplete="creationCompleteHandler(event)">
+
+ 
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.SpatialReference;
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.symbols.PictureMarkerSymbol;
+			import com.esri.ags.tasks.GeometryService;
+			import com.esri.ags.utils.WebMercatorUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.Canvas;
+			import mx.controls.Alert;
+			import mx.effects.Fade;
+			import mx.events.CloseEvent;
+			import mx.events.EffectEvent;
+			import mx.events.FlexEvent;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.IResponder;
+			import mx.rpc.events.FaultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.Group;
+			
+		
+			// Properties
+			public var zoomScale:Number = 600;
+			public var geometryServiceURL:String;
+			public var hideESRIAboutItems:Boolean = false;
+			public var copyFormat:String =  "X: {X} Y: {Y}";
+			public var X:Number;
+			public var Y:Number;
+			[Bindable]
+			public var mapPoint:MapPoint;
+			[Bindable]
+			public var copyPoint:MapPoint;
+			public var graphicsLayer:GraphicsLayer;
+			public var graphicsLayer2:GraphicsLayer;
+			public var markerSymbol:PictureMarkerSymbol;
+			public var copiedSymbol:PictureMarkerSymbol;
+			public var markerRemoveDelay:Number = 2000;
+			public var coordinateSystemsXML:XMLList = new XMLList();
+			[Bindable]
+			public var coordinateSystems:ArrayCollection = new ArrayCollection();
+			
+			[@Embed(source='../assets/icons/copied.png')]
+			[Bindable]
+			private var copied:Class;
+			
+			[@Embed(source='../assets/icons/Red_glow.swf')]
+			[Bindable]
+			private var targetpic:Class;
+			
+			private var goToCoordinates:GoToCoordinateDialog;
+			
+			[Bindable]
+			private var _configXML:XML;
+			
+			public function set Cinfig(value:XML):void {
+				_configXML = value;
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				goToCoordinates = new GoToCoordinateDialog();
+				
+				if (_configXML)
+				{
+					//config XML items
+					var hideItems:String = _configXML.hideESRIAboutItems;
+					this.hideESRIAboutItems = (hideItems.toLocaleLowerCase() == 'true') ? true : false;
+					this.copyFormat = _configXML.copyFormat;
+					this.markerRemoveDelay = _configXML.markerRemoveDelay;
+					this.coordinateSystemsXML = _configXML.coordinateSystems;
+					this.geometryServiceURL = _configXML.geometryServiceURL;
+					this.zoomScale = Number(_configXML.zoomScale);
+					
+					//create new Graphics Layer & Markers
+					//this.markerSymbol = new PictureMarkerSymbol("../assets/icons/Red_glow.swf",20,20);
+					this.markerSymbol = new PictureMarkerSymbol(targetpic,20,20);
+					
+					this.copiedSymbol = new PictureMarkerSymbol(copied,61,45,5,15);
+					this.graphicsLayer = new GraphicsLayer();
+					this.graphicsLayer2 = new GraphicsLayer();
+					this.graphicsLayer.symbol= this.markerSymbol;
+					this.graphicsLayer2.symbol= this.copiedSymbol;
+					this.map.addLayer(this.graphicsLayer);
+					this.map.addLayer(this.graphicsLayer2);
+					
+					// Map mouse move event handler - captures XY
+					this.map.addEventListener(MouseEvent.MOUSE_MOVE, onMapMouseMove);	
+					
+					//Hide ESRI About Menu Items
+					hideESRIMenuItems();
+					
+					// Load context Menu items.
+					createContextMenu();	
+				}
+				else
+				{
+					//Show error if XML fails.
+					Alert.show("There was an error loading the widget configuration XML file ( CopyXY Widget )");
+					return;
+				}
+			}
+			
+			
+			private function onMapClick(event:ContextMenuEvent):void
+			{
+				var gs:GeometryService = new GeometryService("http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/Geometry/GeometryServer");
+				var sr:SpatialReference = new SpatialReference(2230);
+				gs.project([this.map.toMapFromStage(this.X,this.Y)],sr,new AsyncResponder(onProject,onProjectFault) );
+				copyPoint = this.map.toMapFromStage(this.X,this.Y);
+				function onProject (event:Array,token:Object):void
+				{
+					var pt:MapPoint = event[0] as MapPoint;
+					mapPoint = pt;
+					
+
+				}
+				function onProjectFault(event:FaultEvent):void
+				{
+					Alert.show(event.fault.message, "Projection failt");
+				}
+				//this.mapPoint = this.map.toMapFromStage(this.X,this.Y);
+			}
+			
+			private function createContextMenu():void
+			{
+				map.contextMenu.addEventListener(ContextMenuEvent.MENU_SELECT, onMapClick);
+			
+				//Copy XY
+				var cmCopyXY:ContextMenuItem = new ContextMenuItem("Copy Map XY Coordinates To Clipboard", true);
+				cmCopyXY.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, onCopyXYItemSelect)
+				addContextMenuItem(cmCopyXY);
+
+				//convert coordinateSystemsXML to coordinateSystems obj
+				for each (var cs:XML in this.coordinateSystemsXML.coordinateSystem) 
+				{
+					var name:String = cs.@name;
+					var wkid:Number = Number(cs.@wkid);
+					var decimals:Number = Number(cs.@decimals);
+					this.coordinateSystems.addItem( new CoordinateSystem(name,wkid,decimals));
+				}
+				
+				// add additional contex menu for projected coords.
+				if (this.coordinateSystems.length > 0)
+				{
+					var cmProjected:ContextMenuItem = new ContextMenuItem("Copy Projected XY Coordinates To Clipboard", false);
+					
+					var widget:CoordinateMenuWidget = this; // reference widget with variable to pass to dialog.
+					cmProjected.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, function (event:ContextMenuEvent):void
+					{
+						// open Project Dialog
+						var projectedDialog:ProjectCoordinateDialog = new ProjectCoordinateDialog();
+						projectedDialog.show(widget);
+					});
+					//add item to menu items array
+					addContextMenuItem(cmProjected);
+				}
+				
+			}
+			
+			private function addContextMenuItem(menuItem:ContextMenuItem):void
+			{
+				// Code COURTESY of ESRI Flex VIEWER = MapManager.mxml - Line 169
+				// call contextMenu dynamically so this will compile in AIR
+				if (map.contextMenu["customItems"] is Array)
+				{
+					(map.contextMenu["customItems"] as Array).push(menuItem);
+				}
+				else if (map.contextMenu["addItem"])
+				{
+					map.contextMenu["addItem"](menuItem);
+				}
+			}
+			
+			private function hideESRIMenuItems():void
+			{
+				if (map.contextMenu["customItems"] is Array)
+				{
+					(map.contextMenu["customItems"] as Array).splice(0, 2)
+				}
+			}
+			
+			private function onMapMouseMove(event:MouseEvent):void
+			{
+				this.X = event.stageX;
+				this.Y  = event.stageY;
+			}
+
+			private function onGoToCoordinatesSelect(event:ContextMenuEvent):void
+			{
+				this.goToCoordinates.show(this);
+			}
+			
+			private function onCopyXYItemSelect(event:ContextMenuEvent):void
+			{
+				this.copy(this.mapPoint);
+				//this.showGraphic(this.copyPoint);
+				this.showGraphicAsCopied(this.copyPoint);
+			}
+			
+			private function setGraphicTimer(graphic:Graphic, gLayer:GraphicsLayer):void
+			{
+				//create a timer to remove graphics after X delay.
+				var timer:Timer = new Timer(markerRemoveDelay,1);
+				timer.start();
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, function (event:TimerEvent):void
+				{
+					//remove graphic and stop timer.
+					gLayer.remove(graphic);
+					timer.stop();
+				});
+			}
+			
+			public function format(mPoint:MapPoint):String
+			{
+				//format String from config.XML definition.
+				var copyString:String = this.copyFormat;  // copy value to keep format intact
+				copyString = copyString.replace("XValue", mPoint.x ); //replace X
+				copyString = copyString.replace("YValue", mPoint.y ); // replace y
+				return copyString;
+			}
+			
+			public function showGraphic(mPoint:MapPoint):void
+			{
+				//show graphic
+				var graphic:Graphic = new Graphic(mPoint);
+				this.graphicsLayer.add(graphic);
+				this.setGraphicTimer(graphic,graphicsLayer);
+			}
+			
+			public function showGraphicAsCopied(mPoint:MapPoint):void
+			{
+				//show graphic
+				var graphic:Graphic = new Graphic(mPoint);
+				var graphic2:Graphic = new Graphic(mPoint);
+				
+				this.graphicsLayer.add(graphic);
+				this.graphicsLayer2.add(graphic2);
+				this.setGraphicTimer(graphic,graphicsLayer);
+				this.setGraphicTimer(graphic2,graphicsLayer2);
+			}
+			
+			
+			private function copy(mPoint:MapPoint):void
+			{
+				var copyString:String = format(mPoint);
+				//this.showGraphicAsCopied(this.mapPoint);
+				System.setClipboard(copyString); // Flash system clipboard function
+			}
+			protected function superpanel1_closeHandler(event:CloseEvent):void
+			{
+				map.removeLayer(graphicsLayer);
+				map.removeLayer(graphicsLayer2);
+				if ( parent is Canvas)
+				{
+					parent.removeChild(this);
+				}
+				else if ( parent is Group)
+				{
+					var parentGroup:Group = (this.parent as Group);
+					parentGroup.removeElement(this);
+					
+					//parent.removeElement(this)
+				}
+			}
+
+		]]>
+	</fx:Script>
+
+	<EncComponents:GoToCoordinateDialog widget="{this}"/>
+</EncComponents:SuperPanel>

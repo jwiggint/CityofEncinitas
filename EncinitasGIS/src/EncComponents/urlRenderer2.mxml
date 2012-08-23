@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:LinkButton xmlns:mx="http://www.adobe.com/2006/mxml"
+	label="{data.paramName}"
+	color="#124DF9" fontFamily="Verdana" textDecoration="underline" textAlign="left">
+	<mx:Script>
+		<![CDATA[
+			import flash.net.navigateToURL;
+			
+			private function onClickLink(event:MouseEvent):void
+			{
+				
+			}
+		]]>
+	</mx:Script>
+	
+</mx:LinkButton>
+<!--click="navigateToURL(new URLRequest(data.url))" color="#124DF9" fontFamily="Verdana" textDecoration="underline" textAlign="left">-->

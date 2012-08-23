@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	implements="mx.controls.listClasses.IDropInListItemRenderer" width="50" height="20">
+	<mx:Script>
+		<![CDATA[
+			import mx.events.SliderEvent;
+			import com.esri.ags.layers.Layer;
+			import mx.controls.listClasses.BaseListData;
+			import mx.controls.sliderClasses.Slider;
+            
+            private var _listData:BaseListData;
+            
+            public function get listData():BaseListData
+            {
+                return _listData;
+            }
+            
+            public function set listData(value:BaseListData):void
+            {
+                _listData = value;
+            }
+            
+            private function onChange(event:SliderEvent):void
+            {
+            	var currentSlider:Slider=Slider(event.currentTarget);
+				var tiledservice:Layer =  Layer(data);
+				tiledservice.alpha = currentSlider.value;
+            }
+            
+            private function myDataTipFunction(val:String):String 
+            {
+            	var myFloat:Number = (parseFloat(val) * 100);
+            	
+            	return  myFloat.toString().substr(0,2) + "%";
+                //return String(val.substr(2,2)) + "%";
+            }
+            
+            
+
+            
+		]]>
+	</mx:Script>
+	<mx:HSlider value="{data.alpha}" maximum="1"  dataTipFormatFunction="myDataTipFunction" minimum="0" liveDragging="true" change="onChange(event);"  width="50"/>
+	
+</mx:HBox>

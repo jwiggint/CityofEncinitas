@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<flexLibProperties includeAllClasses="true" version="3">
+  <includeClasses>
+    <classEntry path="EncComponents.helperClass"/>
+    <classEntry path="EncComponents.FormNav"/>
+    <classEntry path="skins.IconButtonZoomPrevious"/>
+    <classEntry path="EncComponents.encToolBar"/>
+    <classEntry path="skins.IconButtonMainToolbar"/>
+    <classEntry path="skins.ToolBarSkin"/>
+    <classEntry path="skins.IconButtonDrawingTools"/>
+    <classEntry path="skins.btnStreetviewSkin"/>
+    <classEntry path="skins.ProjectButtonSkin"/>
+    <classEntry path="skins.IconButtonGetElevationSkin"/>
+    <classEntry path="EncComponents.EncElevationComponent2"/>
+    <classEntry path="skins.IconButtonProfileSkin"/>
+    <classEntry path="skins.IconButtonGeoDocsSkin"/>
+    <classEntry path="EncComponents.SSRSReports"/>
+    <classEntry path="skins.SSRSSkin"/>
+    <classEntry path="EncComponents.DistractsServicesComponent"/>
+  </includeClasses>
+  <includeResources/>
+  <namespaceManifests/>
+</flexLibProperties>

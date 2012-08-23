@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" currentState="Services"
+		 initialize="group1_initializeHandler(event)" xmlns:esri="http://www.esri.com/2008/ags" xmlns:EncComponents="EncComponents.*" >
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.Map;
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.events.IdentifyEvent;
+			import com.esri.ags.events.MapMouseEvent;
+			import com.esri.ags.events.QueryEvent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.geometry.Polygon;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.tasks.GeometryService;
+			import com.esri.ags.tasks.IdentifyTask;
+			import com.esri.ags.tasks.QueryTask;
+			import com.esri.ags.tasks.supportClasses.BufferParameters;
+			import com.esri.ags.tasks.supportClasses.IdentifyParameters;
+			import com.esri.ags.tasks.supportClasses.IdentifyResult;
+			import com.esri.ags.tasks.supportClasses.Query;
+			
+			import mx.binding.utils.BindingUtils;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.LinkButton;
+			import mx.events.FlexEvent;
+			import mx.rpc.AsyncResponder;
+			
+			import spark.events.DropDownEvent;
+			
+			private var _map:Map;
+			[Bindable]
+			private var _mappoint:MapPoint;
+			private var _graphic:Graphic = new Graphic;
+			private var _graphlayer:GraphicsLayer
+			[Bindable]
+			private var _txtCommunity:String;
+			[Bindable]
+			private var _txtTrash:String;
+			[Bindable]
+			private var _txtSweeping:String;
+			[Bindable]
+			private var _txtSchoolHigh:String;
+			[Bindable]
+			private var _txtSewer:String;
+			[Bindable]
+			private var _txtWater:String;
+			[Bindable]
+			private var _txtCensus:String;
+			[Bindable]
+			private var _txtGPZ:String;
+			[Bindable]
+			private var _POI:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var _PrivateSchools:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var _Churches:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var _Trails:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var _Parks:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var _lbuElmDist:LinkButtonURL = new LinkButtonURL();
+			[Bindable]
+			private var _lbuHighDist:LinkButtonURL = new LinkButtonURL();
+			[Bindable]
+			private var _lbuSwrDist:LinkButtonURL = new LinkButtonURL();
+			[Bindable]
+			private var _lbuWtrDist:LinkButtonURL = new LinkButtonURL();
+			[Bindable]
+			private var _txtEleBoundry:String;
+			[Bindable]
+			private var _txtMiddleBoundry:String;
+			[Bindable]
+			private var _txtHighBoundry:String;
+			[Bindable]
+			private var _arcPrivateSchools:ArrayCollection = new ArrayCollection;
+			
+/* 			[Bindable]
+			private var _lbuElmBoundary:LinkButtonURL = new LinkButtonURL();
+			[Bindable]
+			private var _lbuMiddleBoundary:LinkButtonURL = new LinkButtonURL();
+			[Bindable]
+			private var _lbuHighBounday:LinkButtonURL = new LinkButtonURL(); */
+			
+			
+			public function set mapset(map:Map):void
+			{
+				_map = map;
+				_map.addEventListener(MapMouseEvent.MAP_CLICK, onMapClick);
+			}
+			public function set graphLayer(grapghlayer:GraphicsLayer):void
+			{
+				_graphlayer = grapghlayer
+			}
+			public function set queryPoint(geometry:MapPoint):void
+			{
+				
+				_graphic.geometry = geometry;
+			}
+
+			protected function group1_initializeHandler(event:FlexEvent):void
+			{
+				_graphlayer.add(graBufferGraphic);
+				_map.addLayer(_graphlayer);
+				
+				
+				_graphic.addEventListener(Event.CHANGE ,onChangeGraphic);
+				var bool:Boolean = _graphic.dispatchEvent(new Event(Event.CHANGE,true,false));
+			}
+			private function onChangeGraphic(e:Event):void
+			{
+				var qparam:IdentifyParameters = new IdentifyParameters;
+				qparam.geometry = _graphic.geometry;
+				qparam.mapExtent = _map.extent;
+				qparam.height = _map.height;
+				qparam.width = _map.width;
+				qparam.layerOption = IdentifyParameters.LAYER_OPTION_ALL;
+				qparam.layerIds = [6,7,8,9,10,11,12,13,14,15,16,17]
+				qparam.returnGeometry = true;
+				qparam.tolerance = 0;
+				
+				var clickGraphic:Graphic = _graphic;	
+				var qt:IdentifyTask = new IdentifyTask("http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/Unsecured/DistrictsAndServices/MapServer");
+				qt.showBusyCursor = true;
+				qt.concurrency = "last";
+				qt.execute(qparam,new AsyncResponder(onIdentifyResult,myFaultFunction, clickGraphic));
+				//getBuffer();
+			}
+			private function onIdentifyResult(results:Array, clickGraphic:Graphic = null):void
+			{
+				if (results && results.length > 0)
+				{
+					for(var i:int = 0;i < results.length; i++)
+					{
+						var result:IdentifyResult = results[i];
+						
+						switch (result.layerName)
+						{
+							case "Community":
+							{
+
+								_txtCommunity = result.feature.attributes["CAName"];
+								break;
+							}
+							case "Trash Pick Up":
+							{
+								_txtTrash = result.feature.attributes["PICKUPCYCLE"] + " " +  result.feature.attributes["PICKUPDAY"];
+								break;
+							}
+							case "Street Sweeping":
+							{
+								_txtSweeping = result.feature.attributes["SWEEPDAYQUALIFIER"] + " " +  result.feature.attributes["SWEEPDAY"];
+								break;
+							}
+							case "Elementary School District":
+							{
+								_lbuElmDist.LabelText= result.feature.attributes["DISTRICT"];
+								_lbuElmDist.URL = result.feature.attributes["URL"];
+								break;
+							}
+							case "High School District":
+							{
+								_lbuHighDist.LabelText= result.feature.attributes["DISTRICT"];
+								_lbuHighDist.URL = result.feature.attributes["URL"];
+								break;
+							}
+							case "Elementary School Attendance Boundary":
+							{
+								_txtEleBoundry = result.feature.attributes["Name"];
+								break;
+							}
+							case "High School Attendance Boundary":
+							{
+								_txtHighBoundry = result.feature.attributes["Name"];
+								break;
+							}
+							case "Middle School Attendance Boundary":
+							{
+								 _txtMiddleBoundry= result.feature.attributes["Name"];
+								break;
+							}	
+							case "Sewer District":
+							{
+								_lbuSwrDist.LabelText= result.feature.attributes["NameFull"];
+								_lbuSwrDist.URL = result.feature.attributes["URL"];
+								break;
+							}
+							case "Water District":
+							{
+								_lbuWtrDist.LabelText= result.feature.attributes["NameFull"];
+								_lbuWtrDist.URL = result.feature.attributes["URL"];
+								break;
+							}
+							case "Census Block":
+							{
+								_txtCensus = result.feature.attributes["TRACTCE10"];
+								break;
+							}
+							case "General Plan Zoning":
+							{
+								_txtGPZ = result.feature.attributes["GPDesignation"];
+								break;
+							}
+							default:
+							{
+								break;
+							}
+						}
+						var resultGraphic:Graphic = result.feature;
+						
+					}
+
+				}
+			}
+			private function myFaultFunction(error:Object, clickGraphic:Graphic = null):void
+			{
+				Alert.show(String(error), "Identify Error on Districts and Services");
+			}
+
+
+			protected function btnSchools_clickHandler(event:MouseEvent):void
+			{
+				currentState = 'Schools';
+				getBuffer();
+
+			}
+
+
+			protected function btnNearbyAmmenities_clickHandler(event:MouseEvent):void
+			{
+				currentState = 'Ammenities';
+				getBuffer();
+			}
+			protected function getBuffer():void
+			{
+				clear();
+				var geomSvr:GeometryService = new GeometryService("http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/Geometry/GeometryServer");
+				var buffParam:BufferParameters = new BufferParameters();
+				buffParam.distances = [ddBuffDist.selectedItem];
+				buffParam.geometries = [_graphic.geometry];
+				buffParam.unit = GeometryService.UNIT_STATUTE_MILE;
+				geomSvr.addEventListener(GeometryServiceEvent.BUFFER_COMPLETE,onBuffercomplete);
+				geomSvr.buffer(buffParam);
+				function onBuffercomplete(event:GeometryServiceEvent):void
+				{
+					geomSvr.removeEventListener(GeometryServiceEvent.BUFFER_COMPLETE,onBuffercomplete);
+					for each (var geometry:Polygon in event.result)
+					{
+						graBufferGraphic.geometry=geometry;
+						_map.extent = graBufferGraphic.geometry.extent;
+						_map.zoom(1.55);
+						
+						_map.centerAt(graBufferGraphic.geometry.extent.center);
+						//_map.scale = 1128.497176;
+						var screenpt:Point = _map.toScreen(_map.extent.center);
+						//screenpt.x = screenpt.x + (map.width * .25);
+						screenpt.x = screenpt.x - (485/ 2);
+						var pt:MapPoint = _map.toMap(screenpt);
+						_map.centerAt(pt);
+						
+						//map.scale = 1128.497176;
+						
+						var query:IdentifyParameters = new IdentifyParameters();
+						query.geometry= geometry;
+						query.height = _map.height;
+						query.width = _map.width;
+						query.mapExtent = _map.extent;
+						query.layerIds = [1,2,3,4,5];
+						query.layerOption = IdentifyParameters.LAYER_OPTION_ALL;
+						query.tolerance = 0;
+
+						var queryDistructs:IdentifyTask = new IdentifyTask("http://encmapservices.cityofencinitas.org/ArcGIS/rest/services/Unsecured/DistrictsAndServices/MapServer");
+						queryDistructs.addEventListener(IdentifyEvent.EXECUTE_COMPLETE,onqueryDistricts);
+						queryDistructs.execute(query);
+						function onqueryDistricts(event:IdentifyEvent):void
+						{
+							for each (var idResult:IdentifyResult in event.identifyResults)
+							{
+								switch (idResult.layerName)
+								{
+									case "Points Of Interest":
+									{
+										_POI.addItem({paramName: idResult.feature.attributes.Name, url: idResult.feature.attributes.URL });
+										break;
+									}
+									case "Churches":
+									{
+										_Churches.addItem({paramName: idResult.feature.attributes.Name, url: idResult.feature.attributes.URL });
+										break;
+									}
+									case "Trails":
+									{
+										_Trails.addItem(idResult.feature.attributes.TrailNumber);
+										break;
+									}
+									case "Parks and Beaches":
+									{
+										_Parks.addItem({paramName: idResult.feature.attributes.NAME, url: idResult.feature.attributes.URL });
+										
+										break;
+									}
+
+									case "Private Schools":
+									{
+										_arcPrivateSchools.addItem({paramName: idResult.feature.attributes.Name, url: idResult.feature.attributes.URL });
+										break;
+									}
+								}
+							}
+							
+						}
+					}
+					
+				}
+			}
+
+			private function clear():void
+			{
+				_arcPrivateSchools.removeAll();
+				_Churches.removeAll();
+				_Parks.removeAll();
+				_POI.removeAll();
+				_PrivateSchools.removeAll();
+				_Trails.removeAll();
+/* 				_txtCensus = "";
+				_txtCommunity= "";
+				_txtEleBoundry= "";
+				_txtGPZ= "";
+				_txtHighBoundry= "";
+				_txtMiddleBoundry= "";
+				_txtEleBoundry= "";
+				_txtSchoolHigh= "";
+				_txtSewer= "";
+				_txtSweeping= "";
+				_txtTrash= "";
+				_txtTrash= "";
+				_txtWater= ""; */
+
+			}
+			protected function onMapClick(event:MapMouseEvent):void
+			{
+				_graphic.geometry = event.mapPoint;
+			}
+
+
+
+			protected function ddBuffDist_closeHandler(event:DropDownEvent):void
+			{
+				getBuffer()
+			}
+
+
+			protected function linkComm_clickHandler(event:MouseEvent):void
+			{
+				
+			}
+
+		]]>
+	</fx:Script>
+
+	<s:states >
+		<s:State id="Services" name="Services"   />
+		<s:State id="Schools" name="Schools" />
+		<s:State id="Ammenities" name="Ammenities" />
+	</s:states>
+	<fx:Declarations>
+		<esri:Graphic id="graBufferGraphic">
+			<esri:symbol>
+				<esri:SimpleFillSymbol color="0x66CC66" alpha="0" style="solid">
+					<esri:SimpleLineSymbol color="0xFFFF33" width="5" alpha="1" style="solid" />
+				</esri:SimpleFillSymbol>
+			</esri:symbol>
+		</esri:Graphic>
+
+	</fx:Declarations>
+	<mx:Form width="100%" height="100%" backgroundColor="#DDDDDD" backgroundAlpha=".7" 
+			 fontSize="13" borderStyle="solid"  borderColor="#D11B3D" includeIn="Services" >
+		<mx:FormItem label="Community:">
+			<mx:Text id="community"  text="{_txtCommunity}"/>
+		</mx:FormItem>
+		
+		<mx:FormItem label="Trash PickUp:">
+			<mx:Text id="txttrash"  text="{_txtTrash}"/>
+		</mx:FormItem>
+		<mx:FormItem label="Street Sweeping:">
+			<mx:Label id="txtsweeping"  text="{_txtSweeping}"/>
+		</mx:FormItem>
+		<mx:FormItem label="Elementary School District:" borderColor="#FFFFFF">
+			<mx:LinkButton id="linkElem" label="{_lbuElmDist.LabelText}"
+						   click="navigateToURL(new URLRequest(_lbuElmDist.URL))" 
+						   color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem>
+		<mx:FormItem label="High School District:" borderColor="#FFFFFF">
+			<mx:LinkButton id="linkHigh" label="{_lbuHighDist.LabelText}"
+						   click="navigateToURL(new URLRequest(_lbuHighDist.URL))" 
+						   color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem> 
+		<mx:FormItem label="Sewer District:">
+			<mx:LinkButton id="linkSwr" label="{_lbuSwrDist.LabelText}"
+						   click="navigateToURL(new URLRequest(_lbuSwrDist.URL))" 
+						   color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem>
+		<mx:FormItem label="Water District:">
+			<mx:LinkButton id="linkWtr" label="{_lbuWtrDist.LabelText}"
+						   click="navigateToURL(new URLRequest(_lbuWtrDist.URL))" 
+						   color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem>
+		<mx:FormItem label="Census Tract/Block:">
+			<mx:Text id="txtcensus"  text="{_txtCensus}"/>
+		</mx:FormItem>
+		<mx:FormItem label="General Plan Zoning:">
+			<mx:Text id="txtGPZoning"  text="{_txtGPZ}"/>
+		</mx:FormItem>
+<!--		<mx:FormItem label="Thomas Bros. Page/Grid:">
+			<mx:Text id="txtThomasBros" width="200" text="{}"/>
+		</mx:FormItem>-->
+		<mx:Spacer height="20" />
+
+	</mx:Form>
+	<mx:Accordion includeIn="Ammenities" id="accAmmenities" width="100%" height="100%">
+		<mx:Form id="frmPOI" label="Points Of Interest" width="100%" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" >
+			<mx:DataGrid dataProvider="{_POI}" width="100%" headerHeight="0" height="100%" rowCount="{_POI.length + 1}" >
+				<mx:columns >
+					<mx:DataGridColumn dataField="Name" itemRenderer="EncComponents.urlRenderer2"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:Form>
+		<mx:Form id="frmParks" label="Parks &amp; Beaches"   width="100%" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0">
+			<mx:DataGrid dataProvider="{_Parks}" width="100%"  headerHeight="0" rowCount="{_Parks.length + 1}">
+				<mx:columns>
+					<mx:DataGridColumn dataField="Name" itemRenderer="EncComponents.urlRenderer2"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:Form>
+		<mx:Form id="frmTrails" label="Trails"  width="100%" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0">
+			<mx:DataGrid dataProvider="{_Trails}" width="100%"  headerHeight="0" rowCount="{_Trails.length + 1}">
+				<mx:columns>
+					<mx:DataGridColumn dataField="TrailName"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:Form>
+		<mx:Form id="frmChurches" label="Churches"  width="100%" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0">
+			<mx:DataGrid dataProvider="{_Churches}" width="100%"  headerHeight="0" rowCount="{_Churches.length + 1}">
+				<mx:columns>
+					<mx:DataGridColumn dataField="Name" itemRenderer="EncComponents.urlRenderer2"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:Form>
+	</mx:Accordion>
+	<mx:Form id="SchoolsTab" includeIn="Schools" width="100%" height="100%">
+<!--		<mx:FormItem label="Elementary School Boundary:" borderColor="#FFFFFF">
+			<mx:LinkButton  label="{_lbuElmBoundary.LabelText}"
+						   click="navigateToURL(new URLRequest(_lbuElmBoundary.URL))" 
+						   color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem> 
+		
+		<mx:FormItem label="Middle School Boundary:" borderColor="#FFFFFF">
+			<mx:LinkButton  label="{_lbuMiddleBoundary.LabelText}"
+							click="navigateToURL(new URLRequest(_lbuMiddleBoundary.URL))" 
+							color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem>
+
+		<mx:FormItem label="High School Boundary:" borderColor="#FFFFFF">
+			<mx:LinkButton  label="{_lbuHighBounday.LabelText}"
+							click="navigateToURL(new URLRequest(_lbuHighBounday.URL))" 
+							color="#124DF9" fontFamily="Verdana" textDecoration="underline" />
+		</mx:FormItem>-->
+		<mx:FormItem label="Elementary School Boundary:" borderColor="#FFFFFF">
+			<mx:Label text="{_txtEleBoundry}"/>
+		</mx:FormItem> 
+		
+		<mx:FormItem label="Middle School Boundary:" borderColor="#FFFFFF">
+			<mx:Label text="{_txtMiddleBoundry}"/>
+		</mx:FormItem>
+
+		<mx:FormItem label="High School Boundary:" borderColor="#FFFFFF">
+			<mx:Label text="{_txtHighBoundry}"/>
+		</mx:FormItem>
+
+		<mx:FormItem label="Private Schools:" borderColor="#FFFFFF" width="100%">
+			<mx:DataGrid dataProvider="{_arcPrivateSchools}" width="100%"  headerHeight="0" textAlign="left" rowCount="{_arcPrivateSchools.length + 1}">
+				<mx:columns>
+					<mx:DataGridColumn  textAlign="left" dataField="Name" itemRenderer="EncComponents.urlRenderer2"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:FormItem>
+
+	</mx:Form>
+
+	<s:HGroup>
+		<s:Label text="Search for"/>
+		<s:Button id="btnSchools" label="Schools" includeIn="Ammenities,Services" click="btnSchools_clickHandler(event)"   />
+		<s:Button id="btnNearbyAmmenities" label="Nearby Amenities" includeIn="Schools,Services" click="btnNearbyAmmenities_clickHandler(event)"  />
+		<s:Label text="within"/>
+		<s:DropDownList id="ddBuffDist" selectedIndex="0" width="80" close="ddBuffDist_closeHandler(event)">
+			<s:ArrayList>
+				<fx:String>.5</fx:String>
+				<fx:String>1</fx:String>
+				<fx:String>1.5</fx:String>
+				<fx:String>2</fx:String>				
+			</s:ArrayList>
+		</s:DropDownList> 
+		<s:Label text="miles"/>
+	</s:HGroup>
+	
+	<s:HGroup   verticalAlign="middle" width="100%" horizontalAlign="center">
+		<s:Button id="btnServices" label="Return to Services" includeIn="Ammenities,Schools" click="currentState = 'Services'" />
+	</s:HGroup>
+</s:Group>

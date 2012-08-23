@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group  xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:esri="http://www.esri.com/2008/ags"
+		  width="125" height="24" 
+		 rollOut="onRollOut(event)"  focusColor="#BAC19F" alpha=".75"
+		 rollOutEffect="{fade10}"
+		 rollOverEffect="{fade01}">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.layers.Layer;
+			
+			import mx.controls.sliderClasses.Slider;
+			import mx.events.SliderEvent;
+			
+			[Bindable]
+			private var _imageLayer:Layer;
+			[Bindable]
+			private var _basemapLayer:Layer;
+			
+					
+	        public function get imageLayer():Layer
+	        {
+	            return _imageLayer;
+	        }
+	        
+	        public function set imageLayer(value:Layer):void
+	        {
+	            _imageLayer = value;
+	           
+	        }
+	        
+	        public function get basemapLayer():Layer
+	        {
+	            return _basemapLayer;
+	        }
+	        
+	        public function set basemapLayer(value:Layer):void
+	        {
+	            _basemapLayer = value;
+	           
+	        }
+			private function onRollOut(event:MouseEvent):void
+			{
+				currentState=''
+			}
+			
+	        private function onSliderChange(event:Event):void
+	        {
+	        	var currentSlider:HSlider=HSlider(event.currentTarget);
+				_imageLayer.alpha = currentSlider.value;
+				_basemapLayer.alpha= 1 - currentSlider.value;
+				
+	        }
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Fade id="fade01"
+				alphaFrom="0.75"
+				alphaTo="1.0"
+				duration="500"/>
+		<s:Fade id="fade10"
+				alphaFrom="1.0"
+				alphaTo="0.75"
+				duration="500"/>
+		
+	</fx:Declarations>
+	<s:states>
+		<s:State name="Default"/>
+		<s:State name="OnHover">
+<!--			<mx:RemoveChild target="{linkbutton1}"/>
+			<mx:AddChild position="lastChild">
+				<mx:Image source="assets/icons/Layers-icon.png" scaleContent="true"/>
+			</mx:AddChild>
+			<mx:AddChild position="lastChild">
+				<mx:HSlider height="24" width="75" 
+					change="onSliderChange(event)" 
+					value= "{_imageLayer.alpha}" 
+					minimum="0"  
+					maximum="1" 
+					liveDragging="true"/>
+			</mx:AddChild>
+			<mx:AddChild position="lastChild">
+				<mx:Image source="assets/icons/Airplane.png" scaleContent="true"/>
+			</mx:AddChild>
+			<mx:SetProperty name="alpha" value="1.0"/>-->
+		</s:State>
+	</s:states>
+	
+	<s:Rect width="100%" height="100%" radiusX="10" radiusY="10"  >
+		<s:stroke>
+			<s:SolidColorStroke color="0x000000" weight="1.1"/>
+		</s:stroke>
+		<s:fill  >
+			<s:SolidColor color="#BAC19F"/>
+		</s:fill>
+	</s:Rect>
+	<s:HGroup width="99%" height="99%"  verticalAlign.Default="middle" gap.Default="20" paddingLeft.Default="4">
+		<s:Label text="Background Control" fontWeight="bold" includeIn="Default" width="95%" height="95%" id="linkbutton1"  rollOver="setCurrentState('OnHover')" fontSize="12" verticalAlign="middle"/>
+		<mx:Image source="assets/icons/Layers-icon.png" scaleContent="true" includeIn="OnHover"/>
+		<s:HSlider height="15" width="65" 
+					change="onSliderChange(event)" 
+					value= "{_imageLayer.alpha}" 
+					minimum="0"  
+					maximum="1" 
+					liveDragging="true" includeIn="OnHover" stepSize=".1" showDataTip="False" />
+		<mx:Image source="assets/icons/Airplane.png" scaleContent="true" includeIn="OnHover"/>
+	</s:HGroup>
+	
+
+
+</s:Group>

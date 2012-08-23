@@ -1,0 +1,153 @@
+/* CSS file */
+@namespace mx "library://ns.adobe.com/flex/mx";
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace esri "http://www.esri.com/2008/ags";
+@namespace EncComponents "EncComponents.*";
+
+
+EncComponents|SuperPanel
+{
+	resize-grip-skin:              Embed(source="/EncinitasGIS/src/assets/icons/resizeHandler.png");
+	
+	actionAlpha:                 0.75;
+	border-color:                 #ffffff;
+	border-alpha:                 1;
+	
+	corner-radius:                 6;
+	
+
+	title-style-name:            "mypanelTitle";
+	close-button-style-name:    "closeButton";
+	minimize-button-style-name:    "minimizeButton";
+	maximize-button-style-name:    "maximizeButton";
+	
+	inactive-header-colors:     #999999, #666666;
+	inactive-footer-colors:     #ffffff, #ffffff;
+	inactive-shadow-distance:    1;
+	inactive-title-style-name:    "mypanelInactiveTitle";
+	chrome-color:				#9ba479;
+	
+	
+
+	
+}
+.closeButton
+{
+	icon:                         Embed(source="/EncinitasGIS/src/assets/icons/icon_close_up.png");
+	up-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_close_up.png");
+	over-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_close_over.png");
+	down-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_close_down.png");
+	disabled-skin:                 Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-up-skin:             Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-over-skin:         Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-down-skin:         Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	down-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	over-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	up-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");    
+}
+
+.maximizeButton
+{
+	icon:                         Embed(source="/EncinitasGIS/src/assets/icons/icon_expand_up.png");
+	up-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_expand_up.png");
+	over-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_expand_over.png");
+	selected-over-icon:         Embed(source="/EncinitasGIS/src/assets/icons/icon_expand_over.png");
+	down-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_expand_down.png");
+	selected-down-icon:         Embed(source="/EncinitasGIS/src/assets/icons/icon_expand_down.png");
+	disabled-skin:                 Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-up-skin:             Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-over-skin:         Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-down-skin:         Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	down-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	over-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	up-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");    
+}
+
+.minimizeButton
+{
+	icon:                         Embed(source="/EncinitasGIS/src/assets/icons/icon_minimize_up.png");
+	up-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_minimize_up.png");
+	over-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_minimize_over.png");
+	selected-over-icon:         Embed(source="/EncinitasGIS/src/assets/icons/icon_minimize_over.png");
+	down-icon:                     Embed(source="/EncinitasGIS/src/assets/icons/icon_minimize_down.png");
+	selected-down-icon:         Embed(source="/EncinitasGIS/src/assets/icons/icon_minimize_down.png");
+	disabled-skin:                 Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-up-skin:             Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-over-skin:         Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	selected-down-skin:         Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	down-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	over-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+	up-skin:                     Embed(source="/EncinitasGIS/src/assets/icons/clear.png");
+}
+
+.mypanelTitle
+{
+	font-weight:                bold;
+	color:                         #ffffff; 
+	background-color: 			#3f5101;
+	chrome-color:				#9ba479;
+}
+
+.mypanelInactiveTitle
+{
+	font-weight:                bold;
+	color:                         #bbbbbb;
+}
+
+.leftBox
+{
+	border-style:                solid;
+	border-sides:                right;
+	border-color:                #666666;
+	background-color:            #000000;
+	background-alpha:            0.6;
+	
+	padding-top:                20;
+	padding-bottom:                20;
+	padding-left:                20;
+	padding-right:                20;
+}
+
+esri|Navigation
+{
+	skinClass: ClassReference("EncComponents.EncNavigationBar");
+	top: 35;
+	left: NaN;
+	right: 6;
+}
+
+
+global
+{
+	chrome-color: #C5C7C6;
+	content-background-color: #C3CBC7;
+	stroke-width:8;
+	stroke-color:#C3CBC7;
+	corner-radius:8;
+	
+	
+}
+
+s|Group
+{
+	text-align:center;
+	
+	
+}
+s|ButtonBar s|ButtonBarButton:upAndSelected,
+s|ButtonBar s|ButtonBarButton:overAndSelected,
+s|ButtonBar s|ButtonBarButton:downAndSelected,
+s|ButtonBar s|ButtonBarButton:disabledAndSelected 
+{
+	
+	chrome-color: #3f5101;
+	color: #9ba479;
+}
+
+s|ButtonBar 
+{ 
+	chromeColor: #9ba479;
+	color: #3f5101;
+}
+
+

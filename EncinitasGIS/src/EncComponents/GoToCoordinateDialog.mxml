@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   width="100%" height="100%"  styleName="modal"
+			   creationComplete="creationCompleteHandler(event)" 
+			   xmlns:EncComponents="EncComponents.*">
+	<s:layout>
+		<s:VerticalLayout paddingBottom="10" paddingTop="10" paddingLeft="10" paddingRight="10"/>
+	</s:layout>
+	
+	<fx:Declarations>
+		<mx:Glow id="glow" duration="1000" color="0xFF0000"/>
+	</fx:Declarations>
+	
+<fx:Style>
+	@namespace s "library://ns.adobe.com/flex/spark";
+	@namespace mx "library://ns.adobe.com/flex/mx";
+	
+	.modal
+	{
+		modal-transparency-duration: 0;
+	}
+	
+</fx:Style>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.geometry.MapPoint;
+			import mx.collections.ArrayCollection;
+			import mx.core.FlexGlobals;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+
+
+			[Bindable]
+			public var coordinateSystems:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var widget:CoordinateMenuWidget;
+			[Bindable]
+			public var projectedPoint:MapPoint;
+			
+			private var projector:Projector;
+			
+			public function show(_coordinateMenuWidget:CoordinateMenuWidget):void
+			{
+				var appWidth:Number = FlexGlobals.topLevelApplication.width;
+				
+				this.y = 75;
+				this.x = ( appWidth /2 ) - (this.width /2);
+				PopUpManager.addPopUp(this,FlexGlobals.topLevelApplication as DisplayObject,false);
+				this.widget = _coordinateMenuWidget;
+				this.coordinateSystems = _coordinateMenuWidget.coordinateSystems;
+				
+				//remove custom option if none exist in config.
+				if (this.coordinateSystems.length  == 0)
+				{
+					//accordion.removeElement(navCustom);
+				}
+			}
+			
+			public function close():void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				this.addEventListener(CloseEvent.CLOSE, onClose)
+			}
+			
+			private function onClose(event:CloseEvent):void
+			{
+				this.close();
+			}
+		]]>
+	</fx:Script>
+	<mx:Accordion id="accordion" width="100%" height="100%" openDuration="200" creationPolicy="all">
+		<!-- StatePlane -->
+		<s:NavigatorContent creationPolicy="all"  label="Find Map Coordinates" width="100%" height="100%" icon="@Embed(source='../assets/icons/asterisk.png')">
+			<s:VGroup width="100%">
+				<EncComponents:GoToCoordinate wkid="102646" widget="{widget}"/>
+				<s:Label text="X: 6242606,     Y: 1961812"/>
+			</s:VGroup>
+		</s:NavigatorContent>
+
+		
+		<!-- WGS 84 Coordinates -->
+		<s:NavigatorContent creationPolicy="all"  label="Find Lat/Long Coordinates"   width="100%" height="100%" icon="@Embed(source='../assets/icons/asterisk.png')">
+			<s:VGroup width="100%">
+				<EncComponents:GoToCoordinate xLabel="Long:" yLabel="Lat:" wkid="4326" widget="{widget}" />
+				<s:Label text=" e.g. X: -117.29 Y: 33.045"/>
+			</s:VGroup>
+		</s:NavigatorContent>
+	
+			
+	</mx:Accordion>
+	
+</s:Group>
